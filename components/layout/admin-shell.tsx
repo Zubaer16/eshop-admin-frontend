@@ -34,7 +34,15 @@ import { cn } from '@/lib/utils'
 import { useAdminStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { QuickNavigation } from './quick-navigation'
+import { PushLifecycle } from '@/components/notifications/push-lifecycle'
 const links = [
+  ...(!isPreviewMode
+    ? [
+        { href: '/notifications', label: 'Inbox', icon: Bell },
+        { href: '/messaging', label: 'Rich messaging', icon: Bell },
+        { href: '/operations', label: 'Operations', icon: Settings2 },
+      ]
+    : []),
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
   ...(!isPreviewMode
@@ -52,7 +60,11 @@ const links = [
   { href: '/alignment', label: 'Compatibility review', icon: ClipboardList },
   { href: '/staff', label: 'Staff & roles', icon: UserRoundCog },
   { href: '/settings', label: 'Store settings', icon: Settings2 },
-  { href: '/activity', label: 'Activity preview', icon: ClipboardList },
+  {
+    href: '/activity',
+    label: isPreviewMode ? 'Activity preview' : 'Audit activity',
+    icon: ClipboardList,
+  },
 ]
 function Logo() {
   return (
@@ -211,17 +223,30 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="ml-auto flex items-center gap-3">
           <QuickNavigation links={visibleLinks} />
           <span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 sm:inline-flex">
-            USD only
+            {isPreviewMode ? 'USD only' : 'TEST scope'}
           </span>
-          <button
-            type="button"
-            aria-label="Notifications unavailable in preview"
-            title="Notifications will be connected to the backend later"
-            disabled
-            className="rounded-xl border border-line p-2 text-muted opacity-50"
-          >
-            <Bell size={19} />
-          </button>
+          {!isPreviewMode ? (
+            <>
+              <PushLifecycle />
+              <Link
+                href="/notifications"
+                aria-label="Notification inbox"
+                className="rounded-xl border border-line p-2"
+              >
+                <Bell size={19} />
+              </Link>
+            </>
+          ) : (
+            <button
+              type="button"
+              aria-label="Notifications unavailable in preview"
+              title="Notifications will be connected to the backend later"
+              disabled
+              className="rounded-xl border border-line p-2 text-muted opacity-50"
+            >
+              <Bell size={19} />
+            </button>
+          )}
           <div
             className="flex size-10 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white"
             aria-label={

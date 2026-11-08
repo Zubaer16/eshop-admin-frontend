@@ -25,6 +25,7 @@ export type PersistentSession = {
   ) => Promise<unknown>
 }
 export type RequestOptions = {
+  responseType?: 'json' | 'text'
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
   query?: Record<string, string | number | boolean | undefined>
@@ -224,7 +225,8 @@ export function createApiClient(config: {
       const response = await send(url.toString(), {
         method: options.method || 'GET',
         headers: {
-          Accept: 'application/json',
+          Accept:
+            options.responseType === 'text' ? 'text/csv' : 'application/json',
           ...(options.body === undefined
             ? {}
             : { 'Content-Type': 'application/json' }),
@@ -266,6 +268,12 @@ export function createApiClient(config: {
         throw new ApiRequestError(response.status, message, seconds)
       }
       if (response.status === 204) return undefined as T
+      if (options.responseType === 'text') {
+        const value = await response.text()
+        if (value.length > 6 * 1024 * 1024)
+          throw new ApiRequestError(502, 'Export response exceeds the limit.')
+        return value as T
+      }
       try {
         return (await response.json()) as T
       } catch {

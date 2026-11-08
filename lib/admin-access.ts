@@ -1,5 +1,8 @@
 import type { ApiUser } from './api/runtime'
 export const sectionAccess: Record<string, string[] | 'OWNER'> = {
+  '/notifications': [],
+  '/messaging': ['marketing.manage'],
+  '/operations': 'OWNER',
   '/media': ['catalog.manage'],
   '/dashboard': ['dashboard.view'],
   '/products': [],

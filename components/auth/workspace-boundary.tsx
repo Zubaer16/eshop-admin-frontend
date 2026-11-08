@@ -12,6 +12,17 @@ import { LiveCustomers } from '@/components/customers/customers'
 import { LiveShipping } from '@/components/commerce/shipping'
 import { LivePromotions } from '@/components/commerce/promotions'
 import { LivePayments } from '@/components/commerce/payments'
+import { LiveOrders } from '@/components/orders/orders'
+import { LiveStaff } from '@/components/management/staff'
+import { LiveSettings, LiveOperations } from '@/components/management/settings'
+import { LiveContent } from '@/components/management/content'
+import {
+  LiveReports,
+  LiveDashboard,
+  LiveActivity,
+} from '@/components/management/reports'
+import { LiveMessaging } from '@/components/management/push-campaigns'
+import { LiveInbox } from '@/components/notifications/inbox'
 export function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
   const path = usePathname(),
     { session } = useAuth()
@@ -39,6 +50,16 @@ export function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
   if (path === '/shipping') return <LiveShipping />
   if (path === '/promotions') return <LivePromotions />
   if (path === '/payments') return <LivePayments />
+  if (path === '/orders') return <LiveOrders />
+  if (path === '/staff') return <LiveStaff />
+  if (path === '/settings') return <LiveSettings />
+  if (path === '/content') return <LiveContent />
+  if (path === '/reports') return <LiveReports />
+  if (path === '/dashboard') return <LiveDashboard />
+  if (path === '/activity') return <LiveActivity />
+  if (path === '/operations') return <LiveOperations />
+  if (path === '/messaging') return <LiveMessaging />
+  if (path === '/notifications') return <LiveInbox />
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-7">
       <h1 className="text-2xl font-black">Workspace ready</h1>
