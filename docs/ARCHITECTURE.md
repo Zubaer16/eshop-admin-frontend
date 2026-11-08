@@ -1,4 +1,4 @@
-# Kookaburra admin architecture
+# eShop admin architecture
 
 ## Boundaries
 

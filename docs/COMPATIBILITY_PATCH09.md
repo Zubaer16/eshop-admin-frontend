@@ -1,4 +1,4 @@
-# Kookaburra Admin — Compatibility Patch 09
+# eShop Admin — Compatibility Patch 09
 
 **Status:** Frontend-only alignment draft. No live Storefront sync, no API, no database migration, no payment/stock authority.
 

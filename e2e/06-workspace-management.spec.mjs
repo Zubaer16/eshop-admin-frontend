@@ -124,13 +124,13 @@ test('store settings reject unsafe URL and persist English/USD defaults', async 
   await fill(
     page,
     page.getByRole('textbox', { name: 'Storefront URL (HTTPS)' }),
-    'https://kookaburra.example',
+    'https://eshop.example',
     'Set sample HTTPS URL',
   )
   await fill(
     page,
     page.getByRole('textbox', { name: 'Store display name' }),
-    'Kookaburra Global',
+    'eShop Global',
     'Update display name',
   )
   await click(
@@ -143,7 +143,7 @@ test('store settings reject unsafe URL and persist English/USD defaults', async 
   await page.locator('html[data-admin-ready="true"]').waitFor()
   await expect(
     page.getByRole('textbox', { name: 'Store display name' }),
-  ).toHaveValue('Kookaburra Global')
+  ).toHaveValue('eShop Global')
   await expect(page.getByText('English — locked')).toBeVisible()
 })
 
@@ -154,7 +154,7 @@ test('activity preview records settings changes, filters and excludes real audit
   await fill(
     page,
     page.getByRole('textbox', { name: 'Store display name' }),
-    'Kookaburra Demo Workspace',
+    'eShop Demo Workspace',
     'Change sample workspace name',
   )
   await click(

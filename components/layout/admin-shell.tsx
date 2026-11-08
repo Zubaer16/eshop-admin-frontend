@@ -26,6 +26,10 @@ import {
   ClipboardList,
   ChartNoAxesCombined,
 } from 'lucide-react'
+import { api } from '@/lib/api/client'
+import { isPreviewMode } from '@/lib/integration-mode'
+import { canVisit } from '@/lib/admin-access'
+import { useAuth } from '@/components/auth/auth-provider'
 import { cn } from '@/lib/utils'
 import { useAdminStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
@@ -33,6 +37,9 @@ import { QuickNavigation } from './quick-navigation'
 const links = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
+  ...(!isPreviewMode
+    ? [{ href: '/media', label: 'Media library', icon: Images }]
+    : []),
   { href: '/categories', label: 'Categories', icon: Layers3 },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
@@ -51,11 +58,11 @@ function Logo() {
   return (
     <Link href="/dashboard" className="flex items-center gap-3">
       <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-xl font-black text-white shadow-[0_7px_17px_rgba(36,89,232,.22)]">
-        K
+        E
       </span>
       <span>
         <span className="block text-base font-black tracking-tight text-ink">
-          kookaburra<span className="text-primary">.</span>
+          eShop<span className="text-primary">.</span>
         </span>
         <span className="block text-[10px] font-bold tracking-[.18em] text-muted">
           ADMIN WORKSPACE
@@ -66,6 +73,10 @@ function Logo() {
 }
 function Sidebar({ close }: { close?: () => void }) {
   const pathname = usePathname()
+  const { session } = useAuth()
+  const visibleLinks = isPreviewMode
+    ? links
+    : links.filter((link) => canVisit(link.href, session.user))
   const reset = useAdminStore((s) => s.resetPreview)
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-white px-5 py-6">
@@ -74,7 +85,7 @@ function Sidebar({ close }: { close?: () => void }) {
         Workspace
       </div>
       <nav aria-label="Admin navigation" className="mt-3 space-y-1.5">
-        {links.map(({ href, label, icon: Icon }) => {
+        {visibleLinks.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
@@ -101,28 +112,37 @@ function Sidebar({ close }: { close?: () => void }) {
       <div className="mt-auto space-y-3 border-t border-line pt-5">
         <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
           <ShieldCheck size={19} className="text-primary" />
-          <p className="mt-2 text-xs font-extrabold">Frontend preview</p>
+          <p className="mt-2 text-xs font-extrabold">
+            {isPreviewMode ? 'Frontend preview' : 'Signed-in workspace'}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            Changes are saved in this browser only. No backend or payment is
-            connected.
+            {isPreviewMode
+              ? 'Changes are saved in this browser only. No backend or payment is connected.'
+              : 'Your identity and permissions come from the store. Data sections are being connected separately.'}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-xs"
-          onClick={() => {
-            if (window.confirm('Reset all local preview changes?')) reset()
-          }}
-        >
-          <RotateCcw size={15} />
-          Reset sample data
-        </Button>
+        {isPreviewMode && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-xs"
+            onClick={() => {
+              if (window.confirm('Reset all local preview changes?')) reset()
+            }}
+          >
+            <RotateCcw size={15} />
+            Reset sample data
+          </Button>
+        )}
       </div>
     </div>
   )
 }
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth()
+  const visibleLinks = isPreviewMode
+    ? links
+    : links.filter((link) => canVisit(link.href, session.user))
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
   useEffect(() => {
@@ -189,7 +209,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <QuickNavigation links={links} />
+          <QuickNavigation links={visibleLinks} />
           <span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 sm:inline-flex">
             USD only
           </span>
@@ -204,10 +224,28 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </button>
           <div
             className="flex size-10 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white"
-            aria-label="Admin preview profile"
+            aria-label={
+              isPreviewMode
+                ? 'Admin preview profile'
+                : 'Signed-in staff profile'
+            }
+            title={isPreviewMode ? undefined : session.user?.email}
           >
-            AD
+            {isPreviewMode
+              ? 'AD'
+              : session.user?.email.slice(0, 2).toUpperCase()}
           </div>
+          {!isPreviewMode && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                void api.signOut()
+              }}
+            >
+              Sign out
+            </Button>
+          )}
         </div>
       </header>
       <main

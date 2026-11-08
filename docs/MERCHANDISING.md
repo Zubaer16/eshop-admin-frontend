@@ -12,7 +12,7 @@ The **Promotions** page contains two separate editors:
 - **Hero banners**: headline, subtitle, CTA label, safe internal route, optional HTTPS/local image reference, display position and preview visibility. No image upload occurs.
 - **Featured collections**: title, description, ordered position, enabled flag and selected products. The editor requires at least one product. Removing a product from Catalog prunes its references; an emptied collection is marked hidden.
 
-The two editors use browser `localStorage` (same Kookaburra Admin preview store). Existing catalog/order data are preserved during hydration. **No customer-facing storefront pages, backend API, payment system, customer order or actual publishing integration is connected.** Do not use the preview for real commerce decisions.
+The two editors use browser `localStorage` (same eShop Admin preview store). Existing catalog/order data are preserved during hydration. **No customer-facing storefront pages, backend API, payment system, customer order or actual publishing integration is connected.** Do not use the preview for real commerce decisions.
 
 ## Verification
 

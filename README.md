@@ -1,6 +1,8 @@
-# Kookaburra Admin
+# eShop Admin
 
-A responsive commerce administration frontend for the Kookaburra single-vendor, multi-category international store.
+Product name: **eShop**; package name: `eshop-admin-frontend`. Existing checkout folders and persisted technical identifiers remain compatible.
+
+A responsive commerce administration frontend for the eShop single-vendor, multi-category international store.
 
 ## Technology
 
@@ -19,9 +21,9 @@ npm install --include=dev
 npm run dev
 ```
 
-Open <http://localhost:3000>. The root route opens the dashboard.
+Open <http://localhost:3000>. The root route requires staff sign-in in live mode. Set explicit preview mode to explore sample business screens.
 
-## Current sections
+## Explicit preview sections
 
 - **Dashboard:** summary KPIs, illustrative sales trend, alerts, recent orders
 - **Products:** search, filter, create/edit products, size/color/SKU variants, image references and preview stock totals
@@ -117,3 +119,27 @@ Open `/reports` for Sales & Orders, Product Performance, Inventory and Customer 
 The `/alignment` page compares the current browser-local Admin catalog to a **snapshot** of the customer Storefront's sample categories and products. The Product Editor includes new optional Storefront metadata and flexible color-only/size-only variants; legacy order lines can carry optional variant references. No IDs, selling prices, quantities or historical order details are auto-migrated. **Admin edits still do not publish to Customer Storefront.**
 
 Run `npm run verify:alignment`, then `npm run check` and `npm run test:e2e:visual`. See `docs/COMPATIBILITY_PATCH09.md` for the unresolved backend decisions and mapping warnings.
+
+## API integration status
+
+Steps 1–2 are complete: live API transport, authentication, persistent sessions and route permissions. Domain APIs use Bearer JWT under `/v1`; a same-origin Next session endpoint handles login/refresh/logout cookies. Login survives reload, new tabs and browser restart until the session expires or is revoked. Refresh tokens use a persistent HttpOnly cookie; access tokens stay in memory. Catalog, shopping and checkout commerce source is connected; remaining business screens show an unavailable state in live mode; sample data is enabled only with `NEXT_PUBLIC_ESHOP_MODE=preview`. API errors never switch to fixtures.
+
+Copy `.env.example` to `.env.local`, set the bare Backend origin and exact `ESHOP_APP_ORIGIN`, and start the Backend on port 4000. Use User port 3000 and Admin port 3001 (`npm run dev -- --port 3001`); configure Backend `CORS_ORIGINS` for the actual frontend origins. Production API origins require HTTPS. Restart Next after changing public environment values.
+
+Run `npm run test:auth` for transport/session/bridge cases, `npm run check` for static/build validation and existing `test:e2e` commands for explicit-preview regressions. The Backend's guarded `npm run test:web:auth` runs the real cross-app auth suite against its isolated local test database. Full plan and auth rules are in sibling Backend `docs/WEB_INTEGRATION.md`, `docs/WEB_AUTH.md` and `contracts/web-integration.v1.json`. Real SMTP/provider and complete product acceptance remain separate.
+
+## Catalog integration source status
+
+Catalog/category/product/variant/media/inventory integration source is implemented; full runtime validation is pending. User shop/category/product pages use canonical public API data and real metadata. Admin category/product/variant editors, `/media` and inventory use Backend records with current-grant write controls. No fixture IDs are imported; explicit preview remains separate. Cart and other business features remain scheduled.
+
+New test code is prepared but not executed under the owner's defer-until-final policy. Intermediate commands are `npm run typecheck`, `npm run lint` and `npm run build`; inspect combined scripts before execution. During final acceptance use `npm run test:unit` for all adapter/auth/upload/access cases, existing preview E2E and the Backend's guarded `test:web:integration` for real cross-app flows. See sibling Backend `docs/WEB_CATALOG.md` for source scope, API additions, retry rules and limitations. Earlier auth test PASS counts describe their historical tested snapshot.
+
+## Account/cart integration source status
+
+Account profile/addresses, the guest/customer cart and explicit login merge, owned wishlist and read-only Admin customer directory are implemented in source. Guest capability uses a separate HttpOnly same-origin cookie with the Backend's fixed 14-day expiry; it is never imported into preview stores or exposed in browser JSON. Cart mutations retain absolute quantities for explicit safe retries; checkout/shipping/tax/coupons and TEST payment source are now implemented; runtime validation remains deferred.
+
+New test code is prepared but execution is deferred until all remaining implementation work finishes. Typecheck/lint/build are the intermediate checks. See sibling Backend `docs/WEB_SHOPPING.md` for ownership, CSRF, conflict reconciliation, directory privacy, final-window commands and source-validation limits. No new environment setting or application dependency is needed beyond the existing trusted API/exact app origins and Next runtime.
+
+## Checkout source delivery (2026-11-08)
+
+Customer checkout uses owned saved-address snapshots, configured country/currency delivery and coupon estimates, expiring stock holds, idempotent unpaid order creation and explicit TEST payment actions. Reload/lost responses recover through owned server discovery. Admin policies follow OWNER-only checkout rate/zone guards, marketing revision/limit rules and payment-report permissions. No live card details or browser PAID flags. Test code is prepared; suites run together at final integration validation. Typecheck, lint and builds are the intermediate checks. See Backend `docs/WEB_CHECKOUT.md`.

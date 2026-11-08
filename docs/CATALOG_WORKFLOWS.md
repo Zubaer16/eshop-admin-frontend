@@ -21,7 +21,7 @@
 
 All management actions are saved in localStorage under the **existing** `kookaburra-admin-local-preview-v1` key, preserving the original browser preview. Previous records without `variants`, `images` or `parentId` remain valid and render with their former stock figures. Use **Reset sample data** to see the new illustrative variants on the seeded sneaker and T-shirt items if your browser has older saved data.
 
-These screens do not enforce real authorization, audit changes on a server, accept media uploads, or synchronize with the Kookaburra customer storefront. Do not operate actual inventory or publish this as an unlocked administration system.
+These screens do not enforce real authorization, audit changes on a server, accept media uploads, or synchronize with the eShop customer storefront. Do not operate actual inventory or publish this as an unlocked administration system.
 
 ## Browser testing
 

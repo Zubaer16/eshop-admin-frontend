@@ -73,7 +73,7 @@ if (missing.length) {
   process.exit(1)
 }
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
-if (pkg.name !== 'kookaburra-admin' || !pkg.scripts['test:e2e:visual']) {
+if (pkg.name !== 'eshop-admin-frontend' || !pkg.scripts['test:e2e:visual']) {
   console.error('Package scripts missing')
   process.exit(1)
 }
@@ -84,5 +84,5 @@ if (!source.length) {
   process.exit(1)
 }
 console.log(
-  `Kookaburra Admin project structure OK (${must.length} required files checked). This is not a production build.`,
+  `eShop Admin project structure OK (${must.length} required files checked). This is not a production build.`,
 )

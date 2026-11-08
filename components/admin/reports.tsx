@@ -111,7 +111,10 @@ export function Reports() {
       : view === 'customers'
         ? data.customers.length
         : data.products.length
-  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+  function onTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
     const keys: Record<string, number> = {
       ArrowRight: (index + 1) % views.length,
       ArrowLeft: (index - 1 + views.length) % views.length,
@@ -132,7 +135,7 @@ export function Reports() {
     )
     const link = document.createElement('a')
     link.href = url
-    link.download = `kookaburra-${view}-preview-${data.range.from ?? 'all'}-${data.range.to ?? 'all'}.csv`
+    link.download = `eshop-${view}-preview-${data.range.from ?? 'all'}-${data.range.to ?? 'all'}.csv`
     document.body.append(link)
     link.click()
     link.remove()
@@ -244,7 +247,9 @@ export function Reports() {
             aria-controls="report-panel"
             aria-selected={view === id}
             tabIndex={view === id ? 0 : -1}
-            ref={(el) => { tabs.current[index] = el }}
+            ref={(el) => {
+              tabs.current[index] = el
+            }}
             onKeyDown={(event) => onTabKeyDown(event, index)}
             className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${view === id ? 'bg-blue-600 text-white' : 'border border-line bg-white text-ink hover:bg-slate-50'}`}
             onClick={() => setView(id)}
@@ -321,7 +326,12 @@ export function Reports() {
                   subtitle="Export this filtered selection as CSV"
                 />
               </div>
-              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Sample order ledger table (scroll horizontally for more columns)">
+              <div
+                className="overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Sample order ledger table (scroll horizontally for more columns)"
+              >
                 <table className="min-w-[680px] w-full text-left">
                   <thead className="bg-slate-50">
                     <tr>
@@ -383,7 +393,12 @@ export function Reports() {
                   subtitle="Item quantities and order value across selected non-cancelled orders"
                 />
               </div>
-              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Product performance table (scroll horizontally for more columns)">
+              <div
+                className="overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Product performance table (scroll horizontally for more columns)"
+              >
                 <table className="w-full min-w-[720px] text-left">
                   <thead className="bg-slate-50">
                     <tr>
@@ -442,7 +457,12 @@ export function Reports() {
                   subtitle="Current balances; not restricted by order date filter"
                 />
               </div>
-              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Stock position table (scroll horizontally for more columns)">
+              <div
+                className="overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Stock position table (scroll horizontally for more columns)"
+              >
                 <table className="min-w-[620px] w-full text-left">
                   <thead className="bg-slate-50">
                     <tr>
@@ -532,7 +552,12 @@ export function Reports() {
                   subtitle="No live customer database or real payment history"
                 />
               </div>
-              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Customer insights table (scroll horizontally for more columns)">
+              <div
+                className="overflow-x-auto"
+                tabIndex={0}
+                role="region"
+                aria-label="Customer insights table (scroll horizontally for more columns)"
+              >
                 <table className="min-w-[720px] w-full text-left">
                   <thead className="bg-slate-50">
                     <tr>

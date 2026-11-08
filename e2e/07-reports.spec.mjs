@@ -47,7 +47,7 @@ test('sales report date filter and CSV download use local order values', async (
   )
   const downloaded = await started
   expect(downloaded.suggestedFilename()).toContain(
-    'kookaburra-sales-preview-2026-10-16-2026-10-17.csv',
+    'eshop-sales-preview-2026-10-16-2026-10-17.csv',
   )
 })
 

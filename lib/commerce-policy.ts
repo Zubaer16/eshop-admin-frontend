@@ -1,4 +1,4 @@
-/** Kookaburra checkout contract alignment (frontend previews only).
+/** eShop checkout contract alignment (frontend previews only).
  * Based on storefront lib/checkout-preview.ts, reviewed 2026-10-18.
  * Actual country eligibility, delivery quotes, taxes and payment status are backend-owned.
  */

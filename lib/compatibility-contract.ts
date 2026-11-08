@@ -1,5 +1,5 @@
 /**
- * Kookaburra compatibility draft v1, based on the storefront's existing
+ * eShop compatibility draft v1, based on the storefront's existing
  * lib/api/contracts.ts. This is not a generated client or a live API contract.
  * The storefront ZIP reviewed was kookaburra-storefront-full-20261018-214154.zip.
  * Storefront reference records below are FIXTURE snapshots, not trusted inventory.

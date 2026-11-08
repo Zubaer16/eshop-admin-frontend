@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This patch improves interaction and keyboard accessibility in the **frontend-only** Kookaburra administration preview. It is **not** a completed accessibility conformance audit or production readiness certification.
+This patch improves interaction and keyboard accessibility in the **frontend-only** eShop administration preview. It is **not** a completed accessibility conformance audit or production readiness certification.
 
 ## Implemented
 

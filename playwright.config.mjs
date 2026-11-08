@@ -38,5 +38,6 @@ export default defineConfig({
     url: 'http://127.0.0.1:3101',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    env: { NEXT_PUBLIC_ESHOP_MODE: 'preview', NEXT_TELEMETRY_DISABLED: '1' },
   },
 })

@@ -1,11 +1,12 @@
 {
-  "name": "kookaburra-admin",
+  "name": "eshop-admin-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test:auth": "node --test tests/api-runtime.test.mjs tests/session-server.test.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "verify": "node scripts/verify-project.mjs",
@@ -19,7 +20,8 @@
     "verify:workspace": "node scripts/verify-workspace.mjs",
     "verify:reports": "node scripts/verify-reports.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
-    "verify:alignment": "node scripts/verify-alignment.mjs"
+    "verify:alignment": "node scripts/verify-alignment.mjs",
+    "test:unit": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",

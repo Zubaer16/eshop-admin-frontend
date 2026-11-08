@@ -158,5 +158,5 @@ assert.equal(lines[0].lineTotal.amountMinor, 3990)
 assert.equal(lines[1].needsVariantResolution, false)
 assert.equal(lines[1].optionSnapshot.size, 'M')
 console.log(
-  'Kookaburra draft compatibility contract OK (categories, reference IDs, USD cents, color-only variants, validation, stock, legacy order lines). No live API tested.',
+  'eShop draft compatibility contract OK (categories, reference IDs, USD cents, color-only variants, validation, stock, legacy order lines). No live API tested.',
 )

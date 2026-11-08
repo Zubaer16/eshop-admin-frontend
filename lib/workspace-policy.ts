@@ -105,7 +105,7 @@ export type StoreSettings = {
   supportNotice: string
 }
 export const defaultStoreSettings: StoreSettings = {
-  storeName: 'Kookaburra',
+  storeName: 'eShop',
   supportEmail: 'support@example.test',
   websiteUrl: '',
   timezone: 'UTC',
