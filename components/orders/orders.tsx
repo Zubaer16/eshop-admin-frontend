@@ -405,6 +405,7 @@ function OrderOperations({ id }: { id: string }) {
                   <label className="text-sm font-bold">
                     Inspection condition
                     <select
+                      aria-label="Inspection condition"
                       name="condition"
                       className={fieldClass}
                       required

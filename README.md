@@ -1,5 +1,9 @@
 # eShop Admin
 
+## Current API integration and routing
+
+Live API features are implemented with explicit preview mode kept separate. Each page renders its own feature; shared boundaries enforce authentication/current permissions. Current executed checks, accepted v1 limits and separate provider/deployment acceptance are tracked in the sibling eshop-backend/docs/WEB_VALIDATION.md report. Earlier implementation-time deferral notes below are historical.
+
 Product name: **eShop**; package name: `eshop-admin-frontend`. Existing checkout folders and persisted technical identifiers remain compatible.
 
 A responsive commerce administration frontend for the eShop single-vendor, multi-category international store.
