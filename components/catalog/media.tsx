@@ -50,7 +50,18 @@ export function MediaImage({
     </span>
   )
 }
+const mediaModules = [
+  'products',
+  'categories',
+  'brands',
+  'banners',
+  'branding',
+  'notifications',
+] as const
+
 function ImageUpload({ complete }: { complete: () => void }) {
+  const [module, setModule] =
+    useState<(typeof mediaModules)[number]>('products')
   const [pending, setPending] = useState<{
       file: File
       instruction: UploadInstruction
@@ -91,7 +102,7 @@ function ImageUpload({ complete }: { complete: () => void }) {
           '/v1/admin/media/uploads',
           {
             method: 'POST',
-            body: { mimeType: file.type, bytes: file.size },
+            body: { module, mimeType: file.type, bytes: file.size },
           },
         )
         item = { file, instruction, transferred: false }
@@ -113,6 +124,25 @@ function ImageUpload({ complete }: { complete: () => void }) {
   return (
     <div className="rounded-xl border border-line p-4">
       <h3 className="font-bold">Upload verified image</h3>
+      <label className="mt-3 block text-sm">
+        Image module
+        <select
+          className={controlClass + ' mt-1'}
+          value={module}
+          disabled={busy || Boolean(pending)}
+          onChange={(event) =>
+            setModule(event.target.value as (typeof mediaModules)[number])
+          }
+        >
+          {mediaModules.map((value) => (
+            <option key={value} value={value}>
+              {value === 'branding'
+                ? 'Store branding'
+                : value.charAt(0).toUpperCase() + value.slice(1)}
+            </option>
+          ))}
+        </select>
+      </label>
       <p className="mt-2 text-xs text-muted">
         Upload through the configured storage provider, then verify on the
         server. No public preview is guaranteed before an asset is attached.
