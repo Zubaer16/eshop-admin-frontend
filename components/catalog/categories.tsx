@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Field, controlClass } from '@/components/ui/field'
 import { Modal } from '@/components/ui/modal'
 import { Panel } from '@/components/ui/panel'
-import { PageHeading } from '@/components/admin/page-heading'
+import { PageHeading } from '@/components/layout/page-heading'
 import { ErrorMessage, ResourceState, message, useResource } from './shared'
-export function LiveCategories() {
+export function Categories() {
   const resource = useResource<Category[]>('/v1/admin/categories')
   const [editing, setEditing] = useState<Category | null | undefined>(),
     [error, setError] = useState(''),

@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { api } from '@/lib/api/client'
 import {
@@ -10,11 +11,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { fieldClass } from '@/components/commerce/forms'
 import { SpecForm, DataView, type Row } from './shared'
-export function LiveContent() {
+export function StoreContent() {
   const [kind, setKind] = useState<'banners' | 'collections'>('banners')
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Store content</h1>
+      <PageHeading title="Store content" />
       <p className="text-sm text-muted">
         Draft, published and archived states are explicit. Publication windows
         use inclusive start/exclusive end. Images must use verified Media

@@ -1,3 +1,5 @@
+> Historical prototype/design reference. The runtime preview workspace and its tests were retired on 2026-11-13. See [current consolidation](ADMIN_CONSOLIDATION_2026-11-13.md) for the API-backed workspace.
+
 # eShop Admin — Compatibility Patch 09
 
 **Status:** Frontend-only alignment draft. No live Storefront sync, no API, no database migration, no payment/stock authority.

@@ -27,9 +27,23 @@ export function Badge({
 export const statusKind = (
   status: string,
 ): 'neutral' | 'success' | 'warning' | 'info' | 'danger' => {
-  if (['Active', 'Delivered'].includes(status)) return 'success'
-  if (['Processing', 'Shipped'].includes(status)) return 'info'
-  if (['Pending'].includes(status)) return 'warning'
-  if (['Cancelled'].includes(status)) return 'danger'
+  status = status.toUpperCase()
+  if (
+    [
+      'ACTIVE',
+      'DELIVERED',
+      'PAID',
+      'PUBLISHED',
+      'SUCCEEDED',
+      'ENABLED',
+    ].includes(status)
+  )
+    return 'success'
+  if (['PROCESSING', 'SHIPPED', 'DISPATCHED', 'APPROVED'].includes(status))
+    return 'info'
+  if (['PENDING', 'PENDING_PAYMENT', 'REQUESTED', 'DRAFT'].includes(status))
+    return 'warning'
+  if (['CANCELLED', 'FAILED', 'DISABLED', 'REJECTED'].includes(status))
+    return 'danger'
   return 'neutral'
 }

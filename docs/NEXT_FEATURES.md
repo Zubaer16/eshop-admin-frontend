@@ -1,3 +1,5 @@
+> Historical prototype/design reference. The runtime preview workspace and its tests were retired on 2026-11-13. See [current consolidation](ADMIN_CONSOLIDATION_2026-11-13.md) for the API-backed workspace.
+
 # Admin frontend roadmap
 
 This repository intentionally starts with a polished, testable frontend foundation. Subsequent frontend work, **before backend implementation**, includes:

@@ -1,27 +1,13 @@
-# eShop admin architecture
+# Admin architecture
 
-## Boundaries
+## One connected presentation
 
-- `app/(admin)/`: Admin page routes
-- `components/layout/`: shared responsive navigation and shell
-- `components/admin/`: commerce workflow screens
-- `components/ui/`: reusable presentation primitives
-- `lib/fixtures.ts`: fictional seed products, categories, customers and orders
-- `lib/store.ts`: client-only preview state and localStorage persistence
-- `lib/types.ts`: current frontend domain models
-- `design/tokens.json`: color and spacing references matching the customer storefront
-- `e2e/`: browser-level behavioral tests
+App Router pages render one feature each. Authentication restores the existing secure session; WorkspaceBoundary checks current grants. There are no mode branches or sample-data fallbacks. Domain API transport, DTOs, permissions and actions remain in their existing modules.
 
-## Planned backend contract (not implemented)
+`components/layout` owns the shared sidebar/header/navigation and PageHeading. `components/ui` owns the original theme primitives, Panel, Badge, Button, Field and Modal. RecordDetails renders server records as labelled cards, status badges and scrollable tables with complete expandable details; it does not invent values or grant access.
 
-The future independent backend will own product definitions and variants, image storage, nested categories, tax and shipping zones, inventory movements, customer accounts, orders, payments, refunds, permissions and audit logs. Administrator authentication and RBAC must be enforced on the server, not solely hidden by the UI.
+Dashboard reads existing overview and daily-report APIs. Financial amounts retain exact integer strings and currency precision. Daily chart coordinates use bounded BigInt ratios for display, not authoritative financial arithmetic. Missing summaries remain unavailable, and the recent-order count is explicitly a bounded latest-record count.
 
-API data should be authoritative for USD pricing, stock counts, payment state and order transitions. Stripe test-mode activities must only be performed via secure server endpoints and verified webhook processing after the backend phase begins.
+Feature components in catalog, commerce, orders, customers, management and notifications retain the existing business handlers. New fields and features must use these shared design primitives and current Backend contracts. Preserve revision checks, frozen retry IDs, uncertain-write guards, canonical identities, owner restrictions, provider scopes and stock/financial authority.
 
-## Currency and locale
-
-Language: English. Display currency: USD. International shipping addresses use countries and regions without separate market-specific storefronts. Categories remain configurable rather than hardcoded for production.
-
-## Preview data safety
-
-Local browser storage is only for UI testing. It cannot be used to simulate secure authentication or transactional guarantees. Clearing browser storage removes changes.
+Tests are API-shaped browser fixtures outside application source plus the retained real transport/security/contract unit tests. Mock workspace files and their preview-only suites have been deleted. External/provider/deployed acceptance is separate from local presentation validation.

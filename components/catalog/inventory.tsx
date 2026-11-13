@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Field, controlClass } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
 import { Modal } from '@/components/ui/modal'
-import { PageHeading } from '@/components/admin/page-heading'
+import { PageHeading } from '@/components/layout/page-heading'
 import {
   ErrorMessage,
   Pagination,
@@ -26,7 +26,7 @@ type Adjustment = {
   reason: string
   note: string
 }
-export function LiveInventory() {
+export function Inventory() {
   const params = useSearchParams(),
     initialProduct = params.get('productId') || ''
   const [page, setPage] = useState(1),
@@ -91,7 +91,7 @@ export function LiveInventory() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="admin-table">
                 <thead className="bg-slate-50 text-xs text-muted">
                   <tr>
                     {[

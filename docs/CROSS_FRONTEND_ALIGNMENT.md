@@ -1,3 +1,5 @@
+> Historical prototype/design reference. The runtime preview workspace and its tests were retired on 2026-11-13. See [current consolidation](ADMIN_CONSOLIDATION_2026-11-13.md) for the API-backed workspace.
+
 # Cross-frontend source audit — Admin vs Storefront
 
 Checked supplied Admin ZIP `kookaburra-admin-full-20261018-211845(1).zip` and supplied Customer Storefront ZIP `kookaburra-storefront-full-20261018-214154.zip`, dated 18 October 2026.

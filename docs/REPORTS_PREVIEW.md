@@ -1,3 +1,5 @@
+> Historical prototype/design reference. The runtime preview workspace and its tests were retired on 2026-11-13. See [current consolidation](ADMIN_CONSOLIDATION_2026-11-13.md) for the API-backed workspace.
+
 # Reports preview contract (Patch 07)
 
 - Source: browser-local `orders`, `products`, `customers` and `stockEvents` held in the existing Zustand store. There is **no server query or payment verification**.

@@ -1,9 +1,11 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { useResource, ResourceState } from '@/components/catalog/shared'
+import { Badge, statusKind } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SpecForm, DataView, type Row } from './shared'
-export function LiveStaff() {
+export function Staff() {
   const staff = useResource<Row[]>('/v1/admin/staff'),
     roles = useResource<Row[]>('/v1/admin/roles'),
     [edit, setEdit] = useState<Row | null | undefined>(),
@@ -16,11 +18,10 @@ export function LiveStaff() {
   }
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Staff and permissions</h1>
+      <PageHeading title="Staff and permissions" />
       <p className="text-sm text-muted">
-        OWNER-only. Passwords are write-only on creation. Removal uses DISABLED
-        status; OWNER is immutable. Role/grant changes are effective on the
-        server immediately.
+        Manage team access and assigned roles. Only the store owner can change
+        permissions.
       </p>
       <Button onClick={() => setEdit(null)}>Create staff account</Button>
       {edit !== undefined && (
@@ -35,20 +36,50 @@ export function LiveStaff() {
         />
       )}
       {staff.data ? (
-        <div className="space-y-3">
-          {staff.data.map((row) => (
-            <article
-              key={String(row.id)}
-              className="space-y-3 rounded-xl border bg-white p-4"
-            >
-              <DataView value={row} />
-              {row.role !== 'OWNER' && (
-                <Button variant="secondary" onClick={() => setEdit(row)}>
-                  Edit staff member
-                </Button>
-              )}
-            </article>
-          ))}
+        <div
+          className="table-scroll rounded-2xl border border-line bg-white"
+          tabIndex={0}
+          role="region"
+          aria-label="Staff members"
+        >
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Team member</th>
+                <th>Account role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staff.data.map((row) => (
+                <tr key={String(row.id)}>
+                  <td>
+                    <p>{String(row.name || row.email)}</p>
+                    <p className="text-xs text-muted">{String(row.email)}</p>
+                  </td>
+                  <td>{String(row.staffRole || row.role)}</td>
+                  <td>
+                    <Badge kind={statusKind(String(row.status))}>
+                      {String(row.status)}
+                    </Badge>
+                  </td>
+                  <td>
+                    {row.role !== 'OWNER' ? (
+                      <Button variant="secondary" onClick={() => setEdit(row)}>
+                        Edit staff member
+                      </Button>
+                    ) : (
+                      <Badge>Store owner</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!staff.data.length && (
+            <p className="p-8 text-muted">No staff members.</p>
+          )}
         </div>
       ) : (
         <ResourceState error={staff.error} retry={staff.reload} />
@@ -69,7 +100,7 @@ export function LiveStaff() {
         roles.data.map((row) => (
           <article
             key={String(row.key)}
-            className="space-y-3 rounded-xl border bg-white p-4"
+            className="space-y-3 rounded-2xl border border-line bg-white p-5"
           >
             <DataView value={row} />
             {!row.immutable && (

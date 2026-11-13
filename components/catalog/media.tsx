@@ -12,7 +12,7 @@ import { transferImage, type UploadInstruction } from '@/lib/api/media-upload'
 import { Button } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
-import { PageHeading } from '@/components/admin/page-heading'
+import { PageHeading } from '@/components/layout/page-heading'
 import {
   ErrorMessage,
   Pagination,
@@ -550,7 +550,7 @@ export function ProductMedia({
     </Panel>
   )
 }
-export function LiveMedia() {
+export function MediaPage() {
   return (
     <>
       <PageHeading

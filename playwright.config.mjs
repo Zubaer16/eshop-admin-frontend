@@ -1,43 +1,29 @@
-import { defineConfig, devices } from '@playwright/test'
-const width = Number(process.env.E2E_VIEWPORT_WIDTH || 1120)
-const height = Number(process.env.E2E_VIEWPORT_HEIGHT || 600)
+import { defineConfig } from '@playwright/test'
+
 export default defineConfig({
   testDir: './e2e',
-  timeout: 45000,
-  expect: { timeout: 12000 },
   fullyParallel: false,
   workers: 1,
   retries: 0,
+  timeout: 45000,
+  expect: { timeout: 12000 },
   reporter: [
-    ['list', { printSteps: true }],
+    ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'test-results/admin/results.json' }],
   ],
-  outputDir: 'test-results/artifacts',
+  outputDir: 'test-results/admin/artifacts',
   use: {
-    baseURL: 'http://127.0.0.1:3101',
-    trace: 'retain-on-failure',
+    baseURL: 'http://127.0.0.1:3213',
+    viewport: { width: 1440, height: 1000 },
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: 'retain-on-failure',
   },
-  projects: [
-    {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width, height },
-        launchOptions: {
-          args: [
-            `--window-size=${Math.max(width + 40, 850)},${Math.max(height + 110, 600)}`,
-          ],
-        },
-      },
-    },
-  ],
   webServer: {
-    command: 'npm run dev -- --port 3101',
-    url: 'http://127.0.0.1:3101',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-    env: { NEXT_PUBLIC_ESHOP_MODE: 'preview', NEXT_TELEMETRY_DISABLED: '1' },
+    command:
+      'node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3213',
+    url: 'http://127.0.0.1:3213',
+    reuseExistingServer: false,
+    timeout: 45000,
   },
 })

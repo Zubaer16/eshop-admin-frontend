@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { api } from '@/lib/api/client'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -10,7 +11,7 @@ import {
 } from '@/components/catalog/shared'
 import { Button } from '@/components/ui/button'
 import { SpecForm, DataView, type Row } from './shared'
-export function LiveMessaging() {
+export function Messaging() {
   const { session } = useAuth(),
     owner = session.user?.role === 'OWNER',
     [page, setPage] = useState(1),
@@ -34,7 +35,7 @@ export function LiveMessaging() {
   }
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Rich messaging campaigns</h1>
+      <PageHeading title="Rich messaging campaigns" />
       <p className="text-sm text-muted">
         Marketing consent is required. Draft/edit and preview do not send. OWNER
         approval schedules fanout; provider acceptance is not device display.

@@ -1,17 +1,13 @@
 import { Suspense } from 'react'
-import { isPreviewMode } from '@/lib/integration-mode'
-import { LiveActivity } from '@/components/management/reports'
+import { AuditActivity } from '@/components/management/reports'
 import type { Metadata } from 'next'
-import { Activity } from '@/components/admin/activity'
 export const metadata: Metadata = {
-  title: isPreviewMode ? 'Local Activity' : 'Activity',
+  title: 'Activity',
 }
 export default function Page() {
-  if (!isPreviewMode)
-    return (
+  return (
       <Suspense fallback={<p role="status">Loading section...</p>}>
-        <LiveActivity />
+        <AuditActivity />
       </Suspense>
     )
-  return <Activity />
 }

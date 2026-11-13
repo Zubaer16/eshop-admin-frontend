@@ -1,12 +1,9 @@
 import { Suspense } from 'react'
-import { isPreviewMode } from '@/lib/integration-mode'
-import { LiveMessaging } from '@/components/management/push-campaigns'
+import { Messaging } from '@/components/management/push-campaigns'
 export default function MessagingPage() {
-  if (!isPreviewMode)
-    return (
+  return (
       <Suspense fallback={<p role="status">Loading section...</p>}>
-        <LiveMessaging />
+        <Messaging />
       </Suspense>
     )
-  return <p className="p-6 text-sm">This section is available in live mode.</p>
 }

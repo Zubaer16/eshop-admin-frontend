@@ -7,7 +7,7 @@ export function PageHeading({
 }: {
   eyebrow?: string
   title: string
-  description: string
+  description?: string
   action?: ReactNode
 }) {
   return (
@@ -21,7 +21,9 @@ export function PageHeading({
         <h1 className="text-2xl font-black tracking-[-.04em] text-ink sm:text-[30px]">
           {title}
         </h1>
-        <p className="mt-1 text-sm text-muted">{description}</p>
+        {description && (
+          <p className="mt-1 text-sm text-muted">{description}</p>
+        )}
       </div>
       {action}
     </div>

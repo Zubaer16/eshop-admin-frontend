@@ -16,7 +16,6 @@ import {
   Bell,
   Globe2,
   ShieldCheck,
-  RotateCcw,
   BadgePercent,
   Images,
   Truck,
@@ -27,27 +26,15 @@ import {
   ChartNoAxesCombined,
 } from 'lucide-react'
 import { api } from '@/lib/api/client'
-import { isPreviewMode } from '@/lib/integration-mode'
 import { canVisit } from '@/lib/admin-access'
 import { useAuth } from '@/components/auth/auth-provider'
 import { cn } from '@/lib/utils'
-import { useAdminStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { QuickNavigation } from './quick-navigation'
 import { PushLifecycle } from '@/components/notifications/push-lifecycle'
 const links = [
-  ...(!isPreviewMode
-    ? [
-        { href: '/notifications', label: 'Inbox', icon: Bell },
-        { href: '/messaging', label: 'Rich messaging', icon: Bell },
-        { href: '/operations', label: 'Operations', icon: Settings2 },
-      ]
-    : []),
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
-  ...(!isPreviewMode
-    ? [{ href: '/media', label: 'Media library', icon: Images }]
-    : []),
   { href: '/categories', label: 'Categories', icon: Layers3 },
   { href: '/inventory', label: 'Inventory', icon: Boxes },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
@@ -57,14 +44,14 @@ const links = [
   { href: '/shipping', label: 'Shipping & taxes', icon: Truck },
   { href: '/payments', label: 'Payments', icon: CreditCard },
   { href: '/reports', label: 'Reports', icon: ChartNoAxesCombined },
+  { href: '/media', label: 'Media library', icon: Images },
+  { href: '/notifications', label: 'Inbox', icon: Bell },
+  { href: '/messaging', label: 'Rich messaging', icon: Bell },
+  { href: '/operations', label: 'Operations', icon: Settings2 },
   { href: '/alignment', label: 'Compatibility review', icon: ClipboardList },
   { href: '/staff', label: 'Staff & roles', icon: UserRoundCog },
   { href: '/settings', label: 'Store settings', icon: Settings2 },
-  {
-    href: '/activity',
-    label: isPreviewMode ? 'Activity preview' : 'Audit activity',
-    icon: ClipboardList,
-  },
+  { href: '/activity', label: 'Audit activity', icon: ClipboardList },
 ]
 function Logo() {
   return (
@@ -86,10 +73,7 @@ function Logo() {
 function Sidebar({ close }: { close?: () => void }) {
   const pathname = usePathname()
   const { session } = useAuth()
-  const visibleLinks = isPreviewMode
-    ? links
-    : links.filter((link) => canVisit(link.href, session.user))
-  const reset = useAdminStore((s) => s.resetPreview)
+  const visibleLinks = links.filter((link) => canVisit(link.href, session.user))
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-white px-5 py-6">
       <Logo />
@@ -124,37 +108,19 @@ function Sidebar({ close }: { close?: () => void }) {
       <div className="mt-auto space-y-3 border-t border-line pt-5">
         <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
           <ShieldCheck size={19} className="text-primary" />
-          <p className="mt-2 text-xs font-extrabold">
-            {isPreviewMode ? 'Frontend preview' : 'Signed-in workspace'}
-          </p>
+          <p className="mt-2 text-xs font-extrabold">Signed-in workspace</p>
           <p className="mt-1 text-xs leading-relaxed text-muted">
-            {isPreviewMode
-              ? 'Changes are saved in this browser only. No backend or payment is connected.'
-              : 'Your identity and permissions come from the store. Data sections are being connected separately.'}
+            Your workspace uses current store data and the permissions assigned
+            to your account.
           </p>
         </div>
-        {isPreviewMode && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-xs"
-            onClick={() => {
-              if (window.confirm('Reset all local preview changes?')) reset()
-            }}
-          >
-            <RotateCcw size={15} />
-            Reset sample data
-          </Button>
-        )}
       </div>
     </div>
   )
 }
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { session } = useAuth()
-  const visibleLinks = isPreviewMode
-    ? links
-    : links.filter((link) => canVisit(link.href, session.user))
+  const visibleLinks = links.filter((link) => canVisit(link.href, session.user))
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
   useEffect(() => {
@@ -195,7 +161,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[min(84vw,280px)] overflow-hidden bg-white shadow-2xl focus:outline-none lg:hidden">
               <Dialog.Title className="sr-only">Admin navigation</Dialog.Title>
               <Dialog.Description className="sr-only">
-                Choose a section of the admin preview workspace.
+                Choose a section of the admin workspace.
               </Dialog.Description>
               <Sidebar close={() => setOpen(false)} />
               <Dialog.Close
@@ -223,44 +189,26 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="ml-auto flex items-center gap-3">
           <QuickNavigation links={visibleLinks} />
           <span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 sm:inline-flex">
-            {isPreviewMode ? 'USD only' : 'TEST scope'}
+            TEST scope
           </span>
-          {!isPreviewMode ? (
-            <>
-              <PushLifecycle />
-              <Link
-                href="/notifications"
-                aria-label="Notification inbox"
-                className="rounded-xl border border-line p-2"
-              >
-                <Bell size={19} />
-              </Link>
-            </>
-          ) : (
-            <button
-              type="button"
-              aria-label="Notifications unavailable in preview"
-              title="Notifications will be connected to the backend later"
-              disabled
-              className="rounded-xl border border-line p-2 text-muted opacity-50"
+          <>
+            <PushLifecycle />
+            <Link
+              href="/notifications"
+              aria-label="Notification inbox"
+              className="rounded-xl border border-line p-2"
             >
               <Bell size={19} />
-            </button>
-          )}
+            </Link>
+          </>
           <div
             className="flex size-10 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white"
-            aria-label={
-              isPreviewMode
-                ? 'Admin preview profile'
-                : 'Signed-in staff profile'
-            }
-            title={isPreviewMode ? undefined : session.user?.email}
+            aria-label="Signed-in staff profile"
+            title={session.user?.email}
           >
-            {isPreviewMode
-              ? 'AD'
-              : session.user?.email.slice(0, 2).toUpperCase()}
+            {session.user?.email.slice(0, 2).toUpperCase()}
           </div>
-          {!isPreviewMode && (
+          {
             <Button
               variant="secondary"
               size="sm"
@@ -270,7 +218,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             >
               Sign out
             </Button>
-          )}
+          }
         </div>
       </header>
       <main

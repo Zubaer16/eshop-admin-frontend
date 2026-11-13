@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { api } from '@/lib/api/client'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -30,7 +31,7 @@ const reports = [
   ],
   ['inventory', 'Current inventory', ['inventory.adjust'], 'inventory'],
 ] as const
-export function LiveReports() {
+export function Reports() {
   const { session } = useAuth()
   const allowed = reports.filter(
       (r) =>
@@ -41,7 +42,7 @@ export function LiveReports() {
   const entry = allowed.find((r) => r[0] === selected) || allowed[0]
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Reports</h1>
+      <PageHeading title="Reports" />
       <p className="text-sm text-muted">
         Verified TEST collections and confirmed refunds use independent event
         dates. Integer strings remain exact; minor units and currency groups are
@@ -214,28 +215,8 @@ function Report({ kind, exportKind }: { kind: string; exportKind: string }) {
     </div>
   )
 }
-export function LiveDashboard() {
-  const r = useResource<Row>('/v1/admin/dashboard/overview')
-  return (
-    <section className="space-y-6">
-      <h1 className="text-3xl font-black">Dashboard</h1>
-      <p className="text-sm text-muted">
-        Current permission-aware server projection. Unavailable domains are not
-        reported as zero. Collections are TEST scope; availability flags
-        determine which sections are authorized.
-      </p>
-      <Button variant="secondary" onClick={r.reload}>
-        Refresh dashboard
-      </Button>
-      {r.data ? (
-        <DataView value={r.data} />
-      ) : (
-        <ResourceState error={r.error} retry={r.reload} />
-      )}
-    </section>
-  )
-}
-export function LiveActivity() {
+export { Dashboard } from './dashboard'
+export function AuditActivity() {
   const [page, setPage] = useState(1),
     [actor, setActor] = useState(''),
     [applied, setApplied] = useState(''),
@@ -249,7 +230,7 @@ export function LiveActivity() {
     }>('/v1/admin/activity', { page, limit: 20, actorId: applied || undefined })
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Audit activity</h1>
+      <PageHeading title="Audit activity" />
       <p className="text-sm text-muted">
         Server audit events. No browser-local activity feed.
       </p>

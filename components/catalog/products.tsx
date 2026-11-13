@@ -1,5 +1,7 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Badge, statusKind } from '@/components/ui/badge'
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api/client'
 import {
@@ -16,7 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Field, controlClass } from '@/components/ui/field'
 import { Modal } from '@/components/ui/modal'
 import { Panel } from '@/components/ui/panel'
-import { PageHeading } from '@/components/admin/page-heading'
+import { PageHeading } from '@/components/layout/page-heading'
 import {
   ErrorMessage,
   Pagination,
@@ -25,7 +27,7 @@ import {
   useResource,
 } from './shared'
 import { ProductMedia } from './media'
-export function LiveProducts() {
+export function Products() {
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(''),
     [draftSearch, setDraftSearch] = useState(''),
@@ -148,14 +150,17 @@ export function LiveProducts() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="admin-table">
                 <thead className="bg-slate-50 text-xs text-muted">
                   <tr>
                     {[
                       'Product / SKU',
+                      'Category',
                       'Price',
                       'Status',
-                      'Stock hint',
+                      'Stock',
+                      'Variants',
+                      'Badge',
                       'Actions',
                     ].map((x) => (
                       <th className="p-4" key={x}>
@@ -168,18 +173,45 @@ export function LiveProducts() {
                   {resource.data.items.map((product) => (
                     <tr key={product.id}>
                       <td className="p-4">
-                        <p className="font-bold">{product.title}</p>
+                        <div className="flex items-center gap-3">
+                          {product.gallery[0] && (
+                            <Image
+                              unoptimized
+                              src={product.gallery[0].url}
+                              alt={product.gallery[0].alt || product.title}
+                              width={44}
+                              height={44}
+                              className="size-11 rounded-lg border border-line object-cover"
+                            />
+                          )}
+                          <p className="font-bold">{product.title}</p>
+                        </div>
                         <p className="mt-1 text-xs text-muted">{product.sku}</p>
+                      </td>
+                      <td className="p-4">
+                        {product.categoryIds
+                          .map(
+                            (id) =>
+                              categories.data?.find((row) => row.id === id)
+                                ?.name || id,
+                          )
+                          .join(', ') || 'Uncategorized'}
                       </td>
                       <td className="p-4">
                         {money(product.priceMinor, product.currency)}
                       </td>
-                      <td className="p-4">{product.status}</td>
+                      <td className="p-4">
+                        <Badge kind={statusKind(product.status)}>
+                          {product.status}
+                        </Badge>
+                      </td>
                       <td className="p-4">
                         {product.hasVariants
                           ? `${product.variants.length} variants`
                           : product.stockOnHand + ' physical units'}
                       </td>
+                      <td>{product.variants.length}</td>
+                      <td>{product.badge || product.tag || 'None'}</td>
                       <td className="flex flex-wrap gap-2 p-4">
                         <Button
                           variant="secondary"

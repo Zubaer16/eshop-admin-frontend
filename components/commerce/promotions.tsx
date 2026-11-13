@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { api } from '@/lib/api/client'
 import type { Page } from '@/lib/api/catalog'
@@ -39,11 +40,11 @@ type Coupon = {
   enabled: boolean
 }
 const nullable = (data: FormData, key: string) => text(data, key) || null
-export function LivePromotions() {
+export function Promotions() {
   const [tab, setTab] = useState<'coupons' | 'campaigns'>('coupons')
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Promotions</h1>
+      <PageHeading title="Promotions" />
       <p className="text-sm text-muted">
         One coupon per checkout. Campaigns are editorial; they never
         automatically change prices or send messages. All money is in currency

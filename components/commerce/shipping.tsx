@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { api } from '@/lib/api/client'
 import { useAuth } from '@/components/auth/auth-provider'
@@ -35,11 +36,11 @@ type Zone = {
   enabled: boolean
   services: Service[]
 }
-export function LiveShipping() {
+export function Shipping() {
   const { session } = useAuth()
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Shipping and tax policies</h1>
+      <PageHeading title="Shipping and tax policies" />
       {session.user?.role === 'OWNER' ? (
         <ShippingEditor />
       ) : (

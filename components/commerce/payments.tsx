@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import {
   useResource,
@@ -28,7 +29,7 @@ type Report = Page<Row> & {
     paymentScope: string
   }
 }
-export function LivePayments() {
+export function Payments() {
   const [page, setPage] = useState(1),
     [currency, setCurrency] = useState(''),
     [status, setStatus] = useState(''),
@@ -45,7 +46,7 @@ export function LivePayments() {
     })
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">TEST payment records</h1>
+      <PageHeading title="TEST payment records" />
       <p className="text-sm text-muted">
         Preparation and confirmed settlement are separate. These records do not
         prove live payments. Refunds shown are lifetime confirmed amounts; no

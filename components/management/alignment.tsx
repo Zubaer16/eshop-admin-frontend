@@ -1,14 +1,14 @@
-export function LiveAlignment() {
+export function Compatibility() {
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-7">
       <h1 className="text-2xl font-black">Frontend compatibility</h1>
       <p>
-        Live Admin and Storefront use the same backend API. Product, variant,
+        Admin and Storefront use the same backend API. Product, variant,
         category and order identifiers come from the server.
       </p>
       <p>
-        Preview records belong to the preview environment. They are not imported
-        or matched automatically to live records.
+        This workspace displays current store records. Product and order changes
+        use the existing server rules and your current permissions.
       </p>
       <p>
         Catalog prices keep their listed currency. Checkout uses configured

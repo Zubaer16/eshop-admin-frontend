@@ -9,7 +9,7 @@ import { Panel } from '@/components/ui/panel'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { controlClass } from '@/components/ui/field'
-import { PageHeading } from '@/components/admin/page-heading'
+import { PageHeading } from '@/components/layout/page-heading'
 type Customer = {
   id: string
   email: string
@@ -29,7 +29,7 @@ type Directory = {
   page: number
   limit: number
 }
-export function LiveCustomers() {
+export function Customers() {
   const [page, setPage] = useState(1),
     [query, setQuery] = useState(''),
     [search, setSearch] = useState(''),
@@ -90,7 +90,7 @@ export function LiveCustomers() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="admin-table">
                 <thead className="bg-slate-50 text-xs text-muted">
                   <tr>
                     {[

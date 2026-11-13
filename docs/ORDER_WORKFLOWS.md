@@ -1,3 +1,5 @@
+> Historical prototype/design reference. The runtime preview workspace and its tests were retired on 2026-11-13. See [current consolidation](ADMIN_CONSOLIDATION_2026-11-13.md) for the API-backed workspace.
+
 # Order management — frontend preview
 
 The Orders area provides interactive _sample_ order management. Data is persisted to this browser's localStorage, not a server. Use **Reset sample data** to reset it. No shipping carrier API, customer notifications, real payments or Stripe refunds are executed.

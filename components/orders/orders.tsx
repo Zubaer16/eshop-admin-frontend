@@ -1,5 +1,8 @@
 'use client'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Badge, statusKind } from '@/components/ui/badge'
+import { displayDate } from '@/lib/presentation'
+import { PageHeading } from '@/components/layout/page-heading'
 import { money } from '@/lib/api/catalog'
 import { useAuth } from '@/components/auth/auth-provider'
 import {
@@ -19,7 +22,7 @@ import {
 } from '@/lib/api/orders'
 import { useOrderResource } from './resource'
 
-export function LiveOrders() {
+export function Orders() {
   const [page, setPage] = useState(1),
     [draft, setDraft] = useState(''),
     [id, setId] = useState(''),
@@ -44,12 +47,11 @@ export function LiveOrders() {
   }
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Orders</h1>
-      <p className="text-sm text-muted">
-        Newest first, server pagination. Lookup uses an exact UUID; global
-        text/status filters are unavailable in this version. Payment and
-        shipment states are independent.
-      </p>
+      <PageHeading
+        eyebrow="ORDER MANAGEMENT"
+        title="Orders"
+        description="Track orders, payments and shipments. Find a specific order using its reference."
+      />
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -75,25 +77,55 @@ export function LiveOrders() {
       {id && <OrderOperations key={id} id={id} />}
       {list.data ? (
         <>
-          <div className="space-y-3">
-            {list.data.items.map((row) => (
-              <article
-                key={row.id}
-                className="space-y-2 rounded-xl border border-slate-200 bg-white p-4"
-              >
-                <p className="break-all font-bold">{row.id}</p>
-                <p className="text-sm">
-                  Order: {row.status} · Shipment:{' '}
-                  {row.fulfillment?.status || 'Not started'} ·{' '}
-                  {money(row.totalMinor, row.currency)}
-                </p>
-                <p className="text-xs text-muted">Created {row.createdAt}</p>
-                <Button variant="secondary" onClick={() => open(row.id)}>
-                  View order {row.id}
-                </Button>
-              </article>
-            ))}
-            {!list.data.items.length && <p>No orders.</p>}
+          <div
+            className="table-scroll rounded-2xl border border-line bg-white"
+            tabIndex={0}
+            role="region"
+            aria-label="Orders table"
+          >
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Placed</th>
+                  <th>Amount</th>
+                  <th>Payment</th>
+                  <th>Shipment</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.data.items.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <span className="block max-w-48 truncate" title={row.id}>
+                        {row.id}
+                      </span>
+                    </td>
+                    <td>{displayDate(row.createdAt)}</td>
+                    <td>{money(row.totalMinor, row.currency)}</td>
+                    <td>
+                      <Badge kind={statusKind(row.status)}>
+                        {row.status.replaceAll('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td>
+                      <Badge kind={statusKind(row.fulfillment?.status || '')}>
+                        {row.fulfillment?.status || 'Not started'}
+                      </Badge>
+                    </td>
+                    <td>
+                      <Button variant="secondary" onClick={() => open(row.id)}>
+                        View order {row.id}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!list.data.items.length && (
+              <p className="p-8 text-muted">No orders.</p>
+            )}
           </div>
           <Pagination data={list.data} change={setPage} />
         </>

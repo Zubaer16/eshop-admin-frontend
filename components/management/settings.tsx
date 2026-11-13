@@ -1,4 +1,5 @@
 'use client'
+import { PageHeading } from '@/components/layout/page-heading'
 import { useState } from 'react'
 import { api } from '@/lib/api/client'
 import {
@@ -16,11 +17,11 @@ const configs = [
   ['Verified branding', 'branding', 'PutStoreBrandingDto'],
   ['Store presentation', 'operations', 'PutStoreOperationsDto'],
 ] as const
-export function LiveSettings() {
+export function Settings() {
   const [tab, setTab] = useState(0)
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Store settings</h1>
+      <PageHeading title="Store settings" />
       <p className="text-sm text-muted">
         OWNER-only. Branding uses verified Media Library IDs. Presentation
         currency never converts product prices; order prefix is reserved and
@@ -116,14 +117,14 @@ function Templates({ kind }: { kind: 'notifications' | 'email' }) {
     </section>
   )
 }
-export function LiveOperations() {
+export function Operations() {
   const [receipt, setReceipt] = useState(''),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false)
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black">Operations</h1>
+      <PageHeading title="Operations" />
       <p className="text-sm text-muted">
         Current counts are not throughput or delivery proof. SMTP ACCEPTED and
         FCM acceptance are submissions only. Uncertain provider/payment jobs

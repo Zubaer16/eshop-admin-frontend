@@ -1,4 +1,5 @@
 'use client'
+import { RecordDetails as DataView } from '@/components/ui/record-details'
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api/client'
 import { formContracts } from '@/lib/api/management-contract'
@@ -59,7 +60,7 @@ export function SpecForm({
   }
   return (
     <form
-      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5"
+      className="space-y-4 rounded-2xl border border-line bg-white p-5 shadow-[0_3px_18px_rgba(15,23,42,.025)]"
       onSubmit={submit}
     >
       <h3 className="text-lg font-bold">{title}</h3>
@@ -180,39 +181,7 @@ export function SpecForm({
     </form>
   )
 }
-export function DataView({ value }: { value: unknown }) {
-  if (value === null || value === undefined)
-    return <span className="text-muted">Unavailable</span>
-  if (typeof value === 'boolean') return <span>{value ? 'Yes' : 'No'}</span>
-  if (typeof value !== 'object')
-    return (
-      <span className="break-words whitespace-pre-wrap">{String(value)}</span>
-    )
-  if (Array.isArray(value))
-    return value.length ? (
-      <div className="space-y-3">
-        {value.map((item, index) => (
-          <div key={index} className="rounded-xl border border-slate-200 p-3">
-            <DataView value={item} />
-          </div>
-        ))}
-      </div>
-    ) : (
-      <p className="text-sm text-muted">No records.</p>
-    )
-  return (
-    <dl className="grid gap-3 text-sm sm:grid-cols-2">
-      {Object.entries(value).map(([key, v]) => (
-        <div key={key} className="min-w-0">
-          <dt className="mb-1 font-bold text-slate-600">{label(key)}</dt>
-          <dd>
-            <DataView value={v} />
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
+export { RecordDetails as DataView } from '@/components/ui/record-details'
 export function ReadPanel({
   route,
   title,

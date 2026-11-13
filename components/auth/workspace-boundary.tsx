@@ -1,12 +1,10 @@
 'use client'
 import { usePathname } from 'next/navigation'
-import { isPreviewMode } from '@/lib/integration-mode'
 import { canVisit } from '@/lib/admin-access'
 import { useAuth } from './auth-provider'
 export function WorkspaceBoundary({ children }: { children: React.ReactNode }) {
   const path = usePathname(),
     { session } = useAuth()
-  if (isPreviewMode) return children
   if (!canVisit(path, session.user))
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-7">

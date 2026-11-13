@@ -1,15 +1,11 @@
 import { Suspense } from 'react'
-import { isPreviewMode } from '@/lib/integration-mode'
-import { LivePromotions } from '@/components/commerce/promotions'
+import { Promotions } from '@/components/commerce/promotions'
 import type { Metadata } from 'next'
-import { Promotions } from '@/components/admin/promotions'
 export const metadata: Metadata = { title: 'Promotions' }
 export default function Page() {
-  if (!isPreviewMode)
-    return (
+  return (
       <Suspense fallback={<p role="status">Loading section...</p>}>
-        <LivePromotions />
+        <Promotions />
       </Suspense>
     )
-  return <Promotions />
 }

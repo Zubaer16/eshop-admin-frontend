@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { isPreviewMode } from '@/lib/integration-mode'
 import { api, ApiRequestError, safeReturnTo } from '@/lib/api/client'
 import { useAuth } from '@/components/auth/auth-provider'
 export function SignInForm({
@@ -72,14 +71,7 @@ export function SignInForm({
       setBusy(false)
     }
   }
-  if (isPreviewMode)
-    return (
-      <section className="mx-auto max-w-md p-8">
-        <h1 className="text-2xl font-black">Preview mode</h1>
-        <p className="mt-3">Authentication is disabled in this preview.</p>
-        <Link href="/">Open preview</Link>
-      </section>
-    )
+
   return (
     <section className="mx-auto my-10 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
       <Link href="/" className="text-xl font-black text-primary">
