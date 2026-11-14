@@ -339,3 +339,69 @@ for (const path of [
     ).toBeVisible()
     expect(errors).toEqual([])
   })
+
+test('owner configures a default delivery charge with a revision and no tax controls', async ({
+  page,
+}) => {
+  await connect(page)
+  let saved = null
+  const payloads = []
+  await page.route('**/v1/admin/checkout/defaults', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const payload = route.request().postDataJSON()
+      payloads.push(payload)
+      saved = { ...payload, revision: (saved?.revision || 0) + 1 }
+      return route.fulfill({ json: saved })
+    }
+    return route.fulfill({ json: saved ? [saved] : [] })
+  })
+  await page.route('**/v1/admin/checkout/rates', (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.route('**/v1/admin/checkout/zones', (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.goto('/shipping')
+  await expect(
+    page.getByRole('heading', { name: 'Delivery settings', exact: true }),
+  ).toBeVisible()
+  await page
+    .getByRole('button', { name: 'Configure default rate', exact: true })
+    .click()
+  await page
+    .getByLabel('Default shipping (minor units)', { exact: true })
+    .fill('500')
+  await page
+    .getByLabel('Default free-delivery threshold (blank disables)', {
+      exact: true,
+    })
+    .fill('5000')
+  await page
+    .getByRole('button', { name: 'Save configuration', exact: true })
+    .click()
+  await expect(
+    page.getByRole('button', { name: 'Edit default USD', exact: true }),
+  ).toBeVisible()
+  expect(payloads[0]).toEqual({
+    currency: 'USD',
+    expectedRevision: 0,
+    shippingMinor: 500,
+    freeOverSubtotalMinor: 5000,
+  })
+  await page
+    .getByRole('button', { name: 'Edit default USD', exact: true })
+    .click()
+  await page
+    .getByLabel('Default shipping (minor units)', { exact: true })
+    .fill('')
+  await page
+    .getByRole('button', { name: 'Save configuration', exact: true })
+    .click()
+  await expect.poll(() => payloads.length).toBe(2)
+  expect(payloads[1]).toMatchObject({
+    currency: 'USD',
+    expectedRevision: 1,
+    shippingMinor: 0,
+  })
+  await expect(page.getByLabel(/tax/i)).toHaveCount(0)
+})

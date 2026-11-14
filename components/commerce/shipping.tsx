@@ -17,8 +17,10 @@ type Rate = {
   currency: string
   shippingMinor: number
   freeOverSubtotalMinor: number | null
-  taxBps: number
   enabled: boolean
+}
+type DefaultRate = Omit<Rate, 'id' | 'countryCode' | 'enabled'> & {
+  revision: number
 }
 type Service = {
   kind: 'standard' | 'express'
@@ -40,14 +42,14 @@ export function Shipping() {
   const { session } = useAuth()
   return (
     <section className="space-y-6">
-      <PageHeading title="Shipping and tax policies" />
+      <PageHeading title="Delivery settings" />
       {session.user?.role === 'OWNER' ? (
         <ShippingEditor />
       ) : (
         <p role="status">
-          Only the store owner can read or configure checkout country/currency
-          lanes and delivery zones. Shipping operations are available with
-          orders.
+          Only the store owner can read or configure default charges, country
+          delivery rates and delivery zones. Shipping operations are available
+          with orders.
         </p>
       )}
     </section>
@@ -69,14 +71,16 @@ function ShippingEditor() {
   return (
     <>
       <p className="text-sm text-muted">
-        Exact currency minor units; tax in basis points (1000 = 10%). Zones
-        configure delivery only: an enabled tax lane is also required. No
-        currency conversion.
+        Configure default delivery charges for each selling currency. Country
+        policies override these defaults, and delivery zones provide service
+        choices. Enter money in minor units. Currencies without an enabled
+        country rate or saved default use free delivery.
       </p>
+      <DefaultRatesEditor />
       <ErrorMessage text={error} />
       <div className="flex gap-3">
         <Button onClick={() => setRate(null)}>
-          Configure country/tax lane
+          Configure country delivery rate
         </Button>
         <Button onClick={() => setZone(null)}>Create delivery zone</Button>
         <Button variant="secondary" onClick={refresh}>
@@ -92,9 +96,8 @@ function ShippingEditor() {
           body={(data) => ({
             countryCode: text(data, 'countryCode').toUpperCase(),
             currency: text(data, 'currency').toUpperCase(),
-            shippingMinor: number(data, 'shippingMinor'),
+            shippingMinor: number(data, 'shippingMinor', true) ?? 0,
             freeOverSubtotalMinor: number(data, 'freeOverSubtotalMinor', true),
-            taxBps: number(data, 'taxBps'),
             enabled: data.has('enabled'),
           })}
         >
@@ -116,7 +119,6 @@ function ShippingEditor() {
             type="number"
             min={0}
             value={rate?.shippingMinor ?? 0}
-            required
           />
           <Field
             name="freeOverSubtotalMinor"
@@ -125,23 +127,15 @@ function ShippingEditor() {
             min={0}
             value={rate?.freeOverSubtotalMinor ?? ''}
           />
-          <Field
-            name="taxBps"
-            label="Tax basis points"
-            type="number"
-            min={0}
-            max={10000}
-            value={rate?.taxBps ?? 0}
-            required
-          />
+
           <Check
             name="enabled"
-            label="Enable this country/currency lane"
+            label="Use this country delivery rate"
             value={rate?.enabled}
           />
         </MutationForm>
       )}
-      <h2 className="text-xl font-bold">Country and tax lanes</h2>
+      <h2 className="text-xl font-bold">Country delivery rates</h2>
       {rates.data ? (
         <div className="space-y-3">
           {rates.data.map((r) => (
@@ -151,8 +145,8 @@ function ShippingEditor() {
             >
               <p>
                 {r.countryCode} / {r.currency} ·{' '}
-                {r.enabled ? 'Enabled' : 'Disabled'} · tax {r.taxBps} bps · flat
-                shipping {r.shippingMinor} minor · free threshold{' '}
+                {r.enabled ? 'Enabled' : 'Disabled'} · flat shipping{' '}
+                {r.shippingMinor} minor · free threshold{' '}
                 {r.freeOverSubtotalMinor ?? 'disabled'}
               </p>
               <Button variant="secondary" onClick={() => setRate(r)}>
@@ -271,7 +265,7 @@ function ShippingEditor() {
                   onClick={() => {
                     if (
                       !window.confirm(
-                        'Delete this zone? The configured flat-rate tax lanes become the fallback. Existing order totals stay unchanged.',
+                        'Delete this zone and use country or store-default shipping rates?',
                       )
                     )
                       return
@@ -297,8 +291,8 @@ function ShippingEditor() {
           ))}
           {!zones.data.length && (
             <p>
-              No delivery zones. Enabled country/currency lanes use their flat
-              shipping rate.
+              Country and store-default rates provide delivery when a zone is
+              not configured.
             </p>
           )}
         </div>
@@ -306,5 +300,89 @@ function ShippingEditor() {
         <ResourceState error={zones.error} retry={zones.reload} />
       )}
     </>
+  )
+}
+
+function DefaultRatesEditor() {
+  const rates = useResource<DefaultRate[]>('/v1/admin/checkout/defaults')
+  const [editing, setEditing] = useState<DefaultRate | null | undefined>()
+  function refresh() {
+    setEditing(undefined)
+    rates.reload()
+  }
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold">Default delivery charges</h2>
+        <Button onClick={() => setEditing(null)}>Configure default rate</Button>
+      </div>
+      {editing !== undefined && (
+        <MutationForm
+          key={editing?.currency || 'new-default'}
+          route="/v1/admin/checkout/defaults"
+          method="PUT"
+          saved={refresh}
+          body={(data) => ({
+            currency: text(data, 'currency').toUpperCase(),
+            expectedRevision: editing?.revision ?? 0,
+            shippingMinor: number(data, 'shippingMinor', true) ?? 0,
+            freeOverSubtotalMinor: number(data, 'freeOverSubtotalMinor', true),
+          })}
+        >
+          {editing ? (
+            <div>
+              <p className="text-sm font-bold">Currency</p>
+              <p className="mt-2">{editing.currency}</p>
+              <input type="hidden" name="currency" value={editing.currency} />
+            </div>
+          ) : (
+            <Field
+              name="currency"
+              label="Default currency code"
+              value="USD"
+              required
+            />
+          )}
+          <Field
+            name="shippingMinor"
+            label="Default shipping (minor units)"
+            type="number"
+            min={0}
+            value={editing?.shippingMinor ?? 0}
+          />
+          <Field
+            name="freeOverSubtotalMinor"
+            label="Default free-delivery threshold (blank disables)"
+            type="number"
+            min={0}
+            value={editing?.freeOverSubtotalMinor ?? ''}
+          />
+        </MutationForm>
+      )}
+      {rates.data ? (
+        <div className="space-y-3">
+          {rates.data.map((rate) => (
+            <article
+              key={rate.currency}
+              className="space-y-3 rounded-xl border border-slate-200 p-4"
+            >
+              <p className="font-bold">{rate.currency}</p>
+              <p className="text-sm">
+                Shipping {rate.shippingMinor} minor · free threshold{' '}
+                {rate.freeOverSubtotalMinor ?? 'disabled'}
+              </p>
+              <Button variant="secondary" onClick={() => setEditing(rate)}>
+                Edit default {rate.currency}
+              </Button>
+            </article>
+          ))}
+          {!rates.data.length && (
+            <p className="text-sm text-muted">No saved default rates.</p>
+          )}
+        </div>
+      ) : (
+        <ResourceState error={rates.error} retry={rates.reload} />
+      )}
+    </section>
   )
 }
