@@ -1,39 +1,105 @@
 'use client'
-import { useEffect, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { api } from '@/lib/api/client'
+import { adminCache, adminOwner, adminQueryKey } from '@/lib/admin-cache'
+import { useAuth } from '@/components/auth/auth-provider'
 import { Button } from '@/components/ui/button'
 import type { Page } from '@/lib/api/catalog'
 
 export const message = (error: unknown) =>
   error instanceof Error ? error.message : 'The request could not be completed.'
+
 export function useResource<T>(
   route: string,
   query: Record<string, string | number | undefined> = {},
 ) {
-  const key = JSON.stringify(query)
-  const [revision, setRevision] = useState(0),
-    [data, setData] = useState<T | null>(null),
-    [error, setError] = useState('')
+  const { session } = useAuth()
+  const owner = adminOwner(session)
+  const queryKey = adminQueryKey(query)
+  const stableQuery = useMemo(
+    () =>
+      Object.fromEntries(JSON.parse(queryKey)) as Record<
+        string,
+        string | number | undefined
+      >,
+    [queryKey],
+  )
+  const cacheable = adminCache.isCacheable(route)
+  const cacheVersion = useSyncExternalStore(
+    adminCache.subscribe,
+    adminCache.getVersion,
+    adminCache.getServerVersion,
+  )
+  const invalidationVersion = useSyncExternalStore(
+    adminCache.subscribe,
+    adminCache.getInvalidationVersion,
+    adminCache.getServerInvalidationVersion,
+  )
+  const [localData, setLocalData] = useState<T | null>(null)
+  const [error, setError] = useState('')
+  const [reloadVersion, setReloadVersion] = useState(0)
+  const refreshGeneration = cacheable ? invalidationVersion : 0
+
   useEffect(() => {
-    const controller = new AbortController()
     let active = true
-    setData(null)
     setError('')
-    api
-      .request<T>(route, { query: JSON.parse(key), signal: controller.signal })
-      .then((value) => {
-        if (active) setData(value)
+    if (cacheable) {
+      void adminCache.read<T>(route, stableQuery).catch((reason) => {
+        if (active) setError(message(reason))
       })
-      .catch((error) => {
-        if (active) setError(message(error))
+      return () => {
+        active = false
+      }
+    }
+
+    const controller = new AbortController()
+    setLocalData(null)
+    api
+      .request<T>(route, { query: stableQuery, signal: controller.signal })
+      .then((value) => {
+        if (active) setLocalData(value)
+      })
+      .catch((reason) => {
+        if (active) setError(message(reason))
       })
     return () => {
       active = false
       controller.abort()
     }
-  }, [route, key, revision])
-  return { data, error, reload: () => setRevision((value) => value + 1) }
+  }, [
+    route,
+    queryKey,
+    owner,
+    cacheable,
+    refreshGeneration,
+    reloadVersion,
+    stableQuery,
+  ])
+
+  const reload = useCallback(() => {
+    setError('')
+    if (cacheable) {
+      void adminCache.read<T>(route, stableQuery, true).catch((reason) => {
+        setError(message(reason))
+      })
+    } else {
+      setReloadVersion((value) => value + 1)
+    }
+  }, [route, cacheable, stableQuery])
+
+  const data = cacheable ? adminCache.peek<T>(route, stableQuery) : localData
+  const isRefreshing = cacheable && adminCache.isPending(route, stableQuery)
+  // The cache version is intentionally a render subscription; data is read from the cache above.
+  void cacheVersion
+  return { data, error, reload, isRefreshing }
 }
+
 export function ErrorMessage({ text }: { text: string }) {
   return text ? (
     <p

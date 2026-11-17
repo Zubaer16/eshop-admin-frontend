@@ -100,6 +100,7 @@ test('logout delayed by push cleanup cannot log out a newly signed-in account', 
           sessionChannelName: () => 'test',
           sessionSource: 'test',
         }
+      if (name === '../admin-cache-events') return { notifyAdminMutation() {} }
       if (name === './browser-push')
         return {
           revokeBrowserPush: () => cleanup.promise,

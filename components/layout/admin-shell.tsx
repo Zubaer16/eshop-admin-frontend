@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { QuickNavigation } from './quick-navigation'
 import { PushLifecycle } from '@/components/notifications/push-lifecycle'
+import { prefetchAdminRoute } from '@/lib/admin-cache'
 const links = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
@@ -86,6 +87,8 @@ function Sidebar({ close }: { close?: () => void }) {
           return (
             <Link
               onClick={close}
+              onMouseEnter={() => prefetchAdminRoute(href)}
+              onFocus={() => prefetchAdminRoute(href)}
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}

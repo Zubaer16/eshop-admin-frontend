@@ -1,5 +1,6 @@
 'use client'
-import { apiOrigin, createApiClient } from './runtime'
+import { apiOrigin, createApiClient, type RequestOptions } from './runtime'
+import { notifyAdminMutation } from '../admin-cache-events'
 import {
   announceSession,
   createBrowserSession,
@@ -22,6 +23,12 @@ export const api = createApiClient({
   onLogout: () => announceSession('staff', 'logout'),
   onLogin: () => announceSession('staff', 'login'),
 })
+const rawRequest = api.request
+api.request = <T>(route: string, options: RequestOptions = {}) => {
+  const method = options.method ?? 'GET'
+  if (method === 'GET') return rawRequest<T>(route, options)
+  return rawRequest<T>(route, options).finally(notifyAdminMutation)
+}
 export const apiRequest = api.request
 
 const sessionSignOut = api.signOut
