@@ -62,7 +62,22 @@ const overview = {
   activeProducts: 1,
   customers: 4,
 }
-async function connect(page, identity = user) {
+async function connect(
+  page,
+  identity = user,
+  categories = [
+    {
+      id,
+      name: 'Clothing',
+      slug: 'clothing',
+      description: '',
+      parentId: null,
+      color: '#EAF0FF',
+      sortOrder: 0,
+      active: true,
+    },
+  ],
+) {
   await page.route('**/api/auth/session', (route) =>
     route.fulfill({
       json: {
@@ -87,8 +102,7 @@ async function connect(page, identity = user) {
       }
     else if (path === '/v1/admin/products') data = pageOf([product])
     else if (path === '/v1/admin/products/' + id) data = product
-    else if (path === '/v1/admin/categories')
-      data = [{ id, name: 'Clothing', slug: 'clothing', parentId: null }]
+    else if (path === '/v1/admin/categories') data = categories
     else if (path === '/v1/admin/orders')
       data = pageOf([
         {
@@ -109,6 +123,73 @@ async function connect(page, identity = user) {
     return route.fulfill({ json: data })
   })
 }
+
+test('category management shows a searchable expandable hierarchy with visibility filters', async ({
+  page,
+}) => {
+  const categories = [
+    {
+      id: 'category-fashion',
+      name: 'Fashion',
+      slug: 'fashion',
+      description: 'Clothing and accessories',
+      parentId: null,
+      color: '#EAF0FF',
+      sortOrder: 1,
+      active: true,
+    },
+    {
+      id: 'category-mens',
+      name: "Men's Fashion",
+      slug: 'mens-fashion',
+      description: '',
+      parentId: 'category-fashion',
+      color: '#EAF0FF',
+      sortOrder: 1,
+      active: true,
+    },
+    {
+      id: 'category-womens',
+      name: "Women's Fashion",
+      slug: 'womens-fashion',
+      description: '',
+      parentId: 'category-fashion',
+      color: '#EAF0FF',
+      sortOrder: 2,
+      active: false,
+    },
+    {
+      id: 'category-books',
+      name: 'Books & Stationery',
+      slug: 'books-stationery',
+      description: '',
+      parentId: null,
+      color: '#EAF0FF',
+      sortOrder: 2,
+      active: true,
+    },
+  ]
+  await connect(page, user, categories)
+  await page.goto('/categories')
+  await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible()
+  await expect(page.getByText('Fashion', { exact: true })).toBeVisible()
+  await expect(page.getByText("Men's Fashion", { exact: true })).toBeVisible()
+  await expect(page.getByText("Women's Fashion", { exact: true })).toBeVisible()
+
+  await page.getByRole('textbox', { name: 'Search categories' }).fill('Men')
+  await expect(page.getByText("Men's Fashion", { exact: true })).toBeVisible()
+  await expect(page.getByText('Fashion', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Books & Stationery', { exact: true }),
+  ).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Clear category search' }).click()
+  await page
+    .getByRole('combobox', { name: 'Filter category visibility' })
+    .selectOption('hidden')
+  await expect(page.getByText("Women's Fashion", { exact: true })).toBeVisible()
+  await expect(page.getByText("Men's Fashion", { exact: true })).toHaveCount(0)
+})
 
 test('authenticated workspace preloads only permission-authorized first-read resources', async ({
   page,
