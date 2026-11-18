@@ -177,7 +177,7 @@ test('shipping configuration is not speculatively loaded for non-owner staff', a
   expect(requests).not.toContain('/v1/admin/checkout/defaults')
 })
 
-test('product detail data preloads on intent without opening the dialog', async ({
+test('product detail data preloads on keyboard focus without opening the dialog', async ({
   page,
 }) => {
   const requests = []
@@ -190,8 +190,7 @@ test('product detail data preloads on intent without opening the dialog', async 
   await expect(
     page.getByRole('cell', { name: 'Connected product SKU-001' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Details', exact: true }).hover()
-  await page.waitForTimeout(275)
+  await page.getByRole('button', { name: 'Details', exact: true }).focus()
   await expect
     .poll(() => requests.includes('/v1/admin/products/' + id))
     .toBe(true)
@@ -279,7 +278,7 @@ test('identity checks coalesce a tab return and its paired focus event', async (
   expect(identityReads).toBe(2)
 })
 
-test('product hover prefetch is cancelled when the pointer does not dwell', async ({
+test('product table scrolling does not trigger speculative detail requests', async ({
   page,
 }) => {
   const requests = []
@@ -290,11 +289,9 @@ test('product hover prefetch is cancelled when the pointer does not dwell', asyn
   await connect(page)
   await page.goto('/products')
   await expect(page.getByTestId('product-row')).toHaveCount(1)
-  const details = page.getByRole('button', { name: 'Details', exact: true })
-  await details.hover()
-  await page.waitForTimeout(50)
-  await page.mouse.move(8, 8)
-  await page.waitForTimeout(220)
+  await page.getByRole('button', { name: 'Details', exact: true }).hover()
+  await page.mouse.wheel(0, 500)
+  await page.waitForTimeout(350)
   expect(requests).not.toContain('/v1/admin/products/' + id)
 })
 
@@ -352,6 +349,49 @@ test('products use aligned catalog table with connected data and edit dialog', a
     '25.99',
   )
 })
+test('product thumbnails use small responsive candidates and async lazy decoding', async ({
+  page,
+}) => {
+  const responsiveProduct = {
+    ...product,
+    gallery: [
+      {
+        id,
+        url: 'https://res.cloudinary.com/demo/image/upload/v1720012345/shirt.png',
+        srcSet:
+          'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_320/v1720012345/shirt.png 320w, https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640/v1720012345/shirt.png 640w',
+        sizes: '(max-width: 640px) 100vw, 33vw',
+        alt: 'Front of shirt',
+        position: 0,
+        width: 960,
+        height: 720,
+      },
+    ],
+  }
+  await connect(page)
+  await page.route('**/v1/admin/products**', (route) =>
+    route.fulfill({ json: pageOf([responsiveProduct]) }),
+  )
+  await page.route('https://res.cloudinary.com/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    }),
+  )
+  await page.goto('/products')
+  const thumbnail = page.getByRole('img', { name: 'Front of shirt' })
+  await expect(thumbnail).toBeVisible()
+  await expect(thumbnail).toHaveAttribute('sizes', '48px')
+  await expect(thumbnail).toHaveAttribute('loading', 'lazy')
+  await expect(thumbnail).toHaveAttribute('decoding', 'async')
+  await expect(thumbnail).toHaveAttribute('fetchpriority', 'low')
+  await expect(thumbnail).toHaveAttribute('srcset', /320w.*640w/)
+})
+
 test('variant products distinguish variant-managed stock from variant count', async ({
   page,
 }) => {

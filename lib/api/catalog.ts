@@ -165,6 +165,26 @@ export function imageUrl(value: string | null | undefined) {
     return null
   }
 }
+/** Accept only Backend-published, HTTPS/local responsive image candidates. */
+export function responsiveImageSrcSet(value: string | null | undefined) {
+  if (!value || value.length > 4096) return undefined
+  const widths = new Set<number>()
+  const safeCandidates: string[] = []
+  let remaining = value
+  while (remaining.length) {
+    if (safeCandidates.length === 6) return undefined
+    // The URL token may itself contain commas (for example Cloudinary transforms).
+    const match = remaining.match(/^\s*(\S+)\s+([1-9]\d{0,4})w(?:\s*,\s*|$)/)
+    if (!match) return undefined
+    const width = Number(match[2])
+    const src = imageUrl(match[1])
+    if (!src || width > 10000 || widths.has(width)) return undefined
+    widths.add(width)
+    safeCandidates.push(`${src} ${width}w`)
+    remaining = remaining.slice(match[0].length)
+  }
+  return safeCandidates.length ? safeCandidates.join(', ') : undefined
+}
 export type ShopQuery = {
   q?: string
   category?: string

@@ -1,9 +1,8 @@
 'use client'
 import AdminLink from '@/components/ui/admin-link'
-import Image from 'next/image'
 import { Package2, Search } from 'lucide-react'
 import { Badge, statusKind } from '@/components/ui/badge'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api/client'
 import {
   categoryLabel,
@@ -12,8 +11,11 @@ import {
   moneyInput,
   type Category,
   type Page,
+  type GalleryImage,
   type Product,
   type Variant,
+  imageUrl,
+  responsiveImageSrcSet,
 } from '@/lib/api/catalog'
 import { Button } from '@/components/ui/button'
 import { Field, controlClass } from '@/components/ui/field'
@@ -29,8 +31,50 @@ import {
 } from './shared'
 import { ProductMedia } from './media'
 import { prefetchAdminProduct } from '@/lib/admin-cache'
+
+function ProductThumbnail({
+  image,
+  productTitle,
+}: {
+  image: GalleryImage | undefined
+  productTitle: string
+}) {
+  const [failed, setFailed] = useState(false)
+  const src = imageUrl(image?.url)
+  const srcSet = responsiveImageSrcSet(image?.srcSet)
+  if (!src || failed) {
+    return (
+      <div
+        className="product-thumbnail product-thumbnail-empty"
+        role="img"
+        aria-label="No product image"
+      >
+        <Package2 size={19} aria-hidden="true" />
+      </div>
+    )
+  }
+  return (
+    // Native img is intentional: it consumes the Backend's verified srcSet
+    // without requiring an allowlist of external storage/CDN hosts in Next.js.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      srcSet={srcSet}
+      sizes={srcSet ? '48px' : undefined}
+      alt={image?.alt || productTitle}
+      width={48}
+      height={48}
+      loading="lazy"
+      decoding="async"
+      fetchPriority="low"
+      draggable={false}
+      className="product-thumbnail"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 export function Products() {
-  const hoverPrefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(''),
     [draftSearch, setDraftSearch] = useState(''),
@@ -50,23 +94,6 @@ export function Products() {
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false)
   const canWrite = api.can('catalog.manage')
-  function cancelProductHoverPrefetch() {
-    if (hoverPrefetchTimer.current) clearTimeout(hoverPrefetchTimer.current)
-    hoverPrefetchTimer.current = null
-  }
-  function scheduleProductHoverPrefetch(id: string) {
-    cancelProductHoverPrefetch()
-    hoverPrefetchTimer.current = setTimeout(() => {
-      hoverPrefetchTimer.current = null
-      prefetchAdminProduct(id)
-    }, 250)
-  }
-  useEffect(
-    () => () => {
-      if (hoverPrefetchTimer.current) clearTimeout(hoverPrefetchTimer.current)
-    },
-    [],
-  )
   async function archive(product: Product) {
     if (
       !window.confirm(
@@ -244,24 +271,11 @@ export function Products() {
                       <tr key={product.id} data-testid="product-row">
                         <td className="product-primary-cell">
                           <div className="product-identity">
-                            {product.gallery[0] ? (
-                              <Image
-                                unoptimized
-                                src={product.gallery[0].url}
-                                alt={product.gallery[0].alt || product.title}
-                                width={48}
-                                height={48}
-                                className="product-thumbnail"
-                              />
-                            ) : (
-                              <div
-                                className="product-thumbnail product-thumbnail-empty"
-                                role="img"
-                                aria-label="No product image"
-                              >
-                                <Package2 size={19} aria-hidden="true" />
-                              </div>
-                            )}
+                            <ProductThumbnail
+                              key={product.gallery[0]?.url || product.id}
+                              image={product.gallery[0]}
+                              productTitle={product.title}
+                            />
                             <div className="product-identity-copy">
                               <p
                                 className="product-title"
@@ -329,22 +343,11 @@ export function Products() {
                               size="sm"
                               variant="secondary"
                               className="product-action-button"
-                              onMouseEnter={() =>
-                                scheduleProductHoverPrefetch(product.id)
+                              onFocus={() => prefetchAdminProduct(product.id)}
+                              onTouchStart={() =>
+                                prefetchAdminProduct(product.id)
                               }
-                              onMouseLeave={cancelProductHoverPrefetch}
-                              onFocus={() => {
-                                cancelProductHoverPrefetch()
-                                prefetchAdminProduct(product.id)
-                              }}
-                              onTouchStart={() => {
-                                cancelProductHoverPrefetch()
-                                prefetchAdminProduct(product.id)
-                              }}
-                              onClick={() => {
-                                cancelProductHoverPrefetch()
-                                setDetailId(product.id)
-                              }}
+                              onClick={() => setDetailId(product.id)}
                             >
                               Details
                             </Button>
