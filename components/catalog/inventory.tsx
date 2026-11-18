@@ -1,6 +1,13 @@
 'use client'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import {
+  AlertTriangle,
+  Boxes,
+  LockKeyhole,
+  Package,
+  Search,
+} from 'lucide-react'
 import { api } from '@/lib/api/client'
 import {
   isUuid,
@@ -13,6 +20,11 @@ import { Field, controlClass } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
 import { prefetchAdminInventoryBalance } from '@/lib/admin-cache'
 import { createIntentPrefetch } from '@/lib/intent-prefetch'
+import {
+  filterInventoryPage,
+  inventoryStatus,
+  summarizeInventoryPage,
+} from '@/lib/inventory-presentation'
 import { Modal } from '@/components/ui/modal'
 import { PageHeading } from '@/components/layout/page-heading'
 import {
@@ -38,6 +50,7 @@ export function Inventory() {
   )
   const [page, setPage] = useState(1),
     [low, setLow] = useState(''),
+    [search, setSearch] = useState(''),
     [productId, setProductId] = useState(
       isUuid(initialProduct) ? initialProduct : '',
     ),
@@ -50,6 +63,12 @@ export function Inventory() {
     productId: filter || undefined,
     lowStock: low || undefined,
   })
+  const pageItems = resource.data?.items ?? []
+  const summary = useMemo(() => summarizeInventoryPage(pageItems), [pageItems])
+  const visibleItems = useMemo(
+    () => filterInventoryPage(pageItems, search),
+    [pageItems, search],
+  )
   return (
     <>
       <PageHeading
@@ -57,54 +76,155 @@ export function Inventory() {
         title="Inventory"
         description="Physical, reserved and available quantities are separate. Checkout remains authoritative."
       />
-      <Panel>
-        <form
-          className="flex flex-wrap gap-3 border-b border-line p-4"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setFilter(productId.trim())
-            setPage(1)
-          }}
+      {resource.data && (
+        <section
+          aria-label="Current inventory page summary"
+          className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
         >
-          <input
-            aria-label="Filter product UUID"
-            placeholder="Exact product UUID"
-            className={controlClass + ' max-w-xs'}
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-          />
-          <Button type="submit" variant="secondary">
-            Filter inventory
-          </Button>
-          <select
-            aria-label="Low stock filter"
-            className={controlClass + ' w-auto'}
-            value={low}
-            onChange={(e) => {
-              setLow(e.target.value)
-              setPage(1)
-            }}
-          >
-            <option value="">All balances</option>
-            <option value="true">Low physical stock</option>
-            <option value="false">Above threshold</option>
-          </select>
-          <Button
-            variant="ghost"
-            type="button"
-            busy={resource.isRefreshing}
-            pendingLabel="Refreshing…"
-            onClick={resource.reload}
-          >
-            Refresh
-          </Button>
-        </form>
+          {[
+            {
+              label: 'SKUs on this page',
+              value: summary.skuCount,
+              icon: Package,
+              tone: 'text-primary bg-blue-50',
+            },
+            {
+              label: 'Physical units · page',
+              value: summary.physicalUnits,
+              icon: Boxes,
+              tone: 'text-slate-700 bg-slate-100',
+            },
+            {
+              label: 'Reserved units · page',
+              value: summary.reservedUnits,
+              icon: LockKeyhole,
+              tone: 'text-violet-700 bg-violet-50',
+            },
+            {
+              label: 'Low stock · page',
+              value: summary.lowStockCount,
+              icon: AlertTriangle,
+              tone: summary.lowStockCount
+                ? 'text-amber-700 bg-amber-50'
+                : 'text-emerald-700 bg-emerald-50',
+            },
+          ].map((metric) => {
+            const Icon = metric.icon
+            return (
+              <div
+                key={metric.label}
+                className="rounded-2xl border border-line bg-white p-4 shadow-[0_3px_18px_rgba(15,23,42,.025)]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-muted">
+                    {metric.label}
+                  </p>
+                  <span
+                    className={
+                      'grid h-9 w-9 place-items-center rounded-xl ' +
+                      metric.tone
+                    }
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                  </span>
+                </div>
+                <p className="mt-3 text-2xl font-bold tabular-nums text-ink">
+                  {metric.value.toLocaleString()}
+                </p>
+                <p className="mt-1 text-[11px] text-muted">
+                  Based on the currently loaded page
+                </p>
+              </div>
+            )
+          })}
+        </section>
+      )}
+      <Panel>
+        <div className="space-y-3 border-b border-line p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_minmax(190px,260px)_auto_auto]">
+            <label className="relative block">
+              <Search
+                size={17}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+              />
+              <input
+                aria-label="Search current inventory page by SKU or product"
+                placeholder="Search this page by SKU or product"
+                className={controlClass + ' pl-10'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </label>
+            <input
+              aria-label="Filter by exact product UUID"
+              placeholder="Exact product UUID (optional)"
+              className={controlClass}
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+            />
+            <select
+              aria-label="Low stock filter"
+              className={controlClass + ' lg:w-auto'}
+              value={low}
+              onChange={(e) => {
+                setLow(e.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="">All balances</option>
+              <option value="true">Low physical stock</option>
+              <option value="false">Above threshold</option>
+            </select>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setFilter(productId.trim())
+                  setPage(1)
+                }}
+              >
+                Filter
+              </Button>
+              <Button
+                variant="ghost"
+                type="button"
+                busy={resource.isRefreshing}
+                pendingLabel="Refreshing…"
+                onClick={resource.reload}
+              >
+                Refresh
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+            <span>
+              Showing {visibleItems.length} of {pageItems.length} loaded items ·{' '}
+              {resource.data?.total ?? 0} total SKUs
+            </span>
+            {search.trim() && (
+              <button
+                type="button"
+                className="font-semibold text-primary hover:underline"
+                onClick={() => setSearch('')}
+              >
+                Clear page search
+              </button>
+            )}
+          </div>
+        </div>
         {!resource.data ? (
           <ResourceState error={resource.error} retry={resource.reload} />
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="admin-table">
+            <div
+              className="table-scroll"
+              data-table-scroll
+              tabIndex={0}
+              aria-label="Inventory balances table"
+            >
+              <table className="admin-table min-w-[900px]">
                 <thead className="bg-slate-50 text-xs text-muted">
                   <tr>
                     {[
@@ -113,6 +233,7 @@ export function Inventory() {
                       'Reserved',
                       'Available',
                       'Threshold',
+                      'Stock status',
                       'Actions',
                     ].map((x) => (
                       <th className="p-4" key={x}>
@@ -122,52 +243,86 @@ export function Inventory() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {resource.data.items.map((balance) => (
-                    <tr key={balance.id}>
-                      <td className="p-4">
-                        <p className="font-bold">{balance.sku}</p>
-                        <p className="text-xs text-muted">{balance.title}</p>
-                      </td>
-                      <td className="p-4">{balance.onHand}</td>
-                      <td className="p-4">{balance.reservedQuantity}</td>
-                      <td className="p-4">{balance.availableQuantity}</td>
-                      <td className="p-4">
-                        {balance.lowStockThreshold}
-                        {balance.lowStock ? ' · Low' : ''}
-                      </td>
-                      <td className="p-4">
-                        <Button
-                          variant="secondary"
-                          onMouseEnter={() =>
-                            balancePrefetchIntent.schedule(balance.id, () =>
-                              prefetchAdminInventoryBalance(balance.id),
-                            )
-                          }
-                          onMouseLeave={() =>
-                            balancePrefetchIntent.cancel(balance.id)
-                          }
-                          onFocus={() =>
-                            balancePrefetchIntent.run(balance.id, () =>
-                              prefetchAdminInventoryBalance(balance.id),
-                            )
-                          }
-                          onTouchStart={() =>
-                            balancePrefetchIntent.run(balance.id, () =>
-                              prefetchAdminInventoryBalance(balance.id),
-                            )
-                          }
-                          onClick={() => setSelected(balance.id)}
-                        >
-                          Balance details
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {visibleItems.map((balance) => {
+                    const status = inventoryStatus(balance)
+                    const statusLabel =
+                      status === 'NO_AVAILABLE_STOCK'
+                        ? 'No available stock'
+                        : status === 'LOW_STOCK'
+                          ? 'Low stock'
+                          : 'Healthy'
+                    const statusClass =
+                      status === 'NO_AVAILABLE_STOCK'
+                        ? 'bg-red-50 text-red-700'
+                        : status === 'LOW_STOCK'
+                          ? 'bg-amber-50 text-amber-800'
+                          : 'bg-emerald-50 text-emerald-700'
+                    return (
+                      <tr key={balance.id}>
+                        <td className="p-4">
+                          <p className="font-bold text-ink">{balance.sku}</p>
+                          <p className="mt-0.5 text-xs font-normal text-muted">
+                            {balance.title}
+                          </p>
+                        </td>
+                        <td className="p-4 tabular-nums">
+                          {balance.onHand.toLocaleString()}
+                        </td>
+                        <td className="p-4 tabular-nums">
+                          {balance.reservedQuantity.toLocaleString()}
+                        </td>
+                        <td className="p-4 tabular-nums font-semibold">
+                          {balance.availableQuantity.toLocaleString()}
+                        </td>
+                        <td className="p-4 tabular-nums">
+                          {balance.lowStockThreshold.toLocaleString()}
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={
+                              'inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ' +
+                              statusClass
+                            }
+                          >
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <Button
+                            variant="secondary"
+                            onMouseEnter={() =>
+                              balancePrefetchIntent.schedule(balance.id, () =>
+                                prefetchAdminInventoryBalance(balance.id),
+                              )
+                            }
+                            onMouseLeave={() =>
+                              balancePrefetchIntent.cancel(balance.id)
+                            }
+                            onFocus={() =>
+                              balancePrefetchIntent.run(balance.id, () =>
+                                prefetchAdminInventoryBalance(balance.id),
+                              )
+                            }
+                            onTouchStart={() =>
+                              balancePrefetchIntent.run(balance.id, () =>
+                                prefetchAdminInventoryBalance(balance.id),
+                              )
+                            }
+                            onClick={() => setSelected(balance.id)}
+                          >
+                            Balance details
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
-              {!resource.data.items.length && (
-                <p className="p-8 text-sm text-muted">
-                  No inventory balances match.
+              {!visibleItems.length && (
+                <p className="p-8 text-center text-sm text-muted">
+                  {pageItems.length
+                    ? 'No inventory items on this page match your search.'
+                    : 'No inventory balances match.'}
                 </p>
               )}
             </div>
