@@ -216,7 +216,7 @@ test('connected dashboard retains cards, chart and exact financial values', asyn
     fullPage: true,
   })
 })
-test('products use original table style with connected data and edit dialog', async ({
+test('products use aligned catalog table with connected data and edit dialog', async ({
   page,
 }) => {
   await connect(page)
@@ -224,10 +224,24 @@ test('products use original table style with connected data and edit dialog', as
   await expect(
     page.getByRole('cell', { name: 'Connected product SKU-001' }),
   ).toBeVisible()
-  await expect(page.locator('.admin-table th')).toHaveCount(8)
+  await expect(page.locator('.product-table th')).toHaveCount(8)
+  await expect(page.getByTestId('product-row')).toHaveCount(1)
+  await expect(
+    page.getByRole('img', { name: 'No product image' }),
+  ).toBeVisible()
   await expect(
     page.getByRole('cell', { name: '$25.99', exact: true }),
   ).toBeVisible()
+  const actionsCell = page.getByTestId('product-row').locator('td').last()
+  await expect(actionsCell.locator('.product-actions')).toBeVisible()
+  expect(
+    await actionsCell.evaluate((element) => getComputedStyle(element).display),
+  ).toBe('table-cell')
+  expect(
+    await actionsCell
+      .locator('.product-actions')
+      .evaluate((element) => getComputedStyle(element).display),
+  ).toBe('flex')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Edit product' })).toBeVisible()
   await expect(page.getByLabel('Product title')).toHaveValue(
@@ -237,6 +251,42 @@ test('products use original table style with connected data and edit dialog', as
     '25.99',
   )
 })
+test('variant products distinguish variant-managed stock from variant count', async ({
+  page,
+}) => {
+  await connect(page)
+  const variantProduct = {
+    ...product,
+    hasVariants: true,
+    stockOnHand: 0,
+    variants: [
+      {
+        id: '00000000-0000-4000-8000-000000000011',
+        productId: id,
+        sku: 'SKU-001-S',
+        options: { size: 'S' },
+        priceMinor: null,
+        stockOnHand: 4,
+      },
+      {
+        id: '00000000-0000-4000-8000-000000000012',
+        productId: id,
+        sku: 'SKU-001-M',
+        options: { size: 'M' },
+        priceMinor: null,
+        stockOnHand: 8,
+      },
+    ],
+  }
+  await page.route('**/v1/admin/products**', (route) =>
+    route.fulfill({ json: pageOf([variantProduct]) }),
+  )
+  await page.goto('/products')
+  const row = page.getByTestId('product-row')
+  await expect(row.getByText('Managed by variants')).toBeVisible()
+  await expect(row.getByRole('cell', { name: '2', exact: true })).toBeVisible()
+})
+
 test('orders retain connected payment and shipment table', async ({ page }) => {
   await connect(page)
   await page.goto('/orders')
@@ -259,6 +309,17 @@ for (const width of [320, 390, 768, 1440])
           page.getByRole('img', { name: 'Daily net collections in USD' }),
         ).toBeVisible()
       else await expect(page.locator('.admin-table').first()).toBeVisible()
+      if (path === '/products') {
+        const productRegion = page.getByRole('region', {
+          name: 'Products list',
+        })
+        await expect(productRegion).toBeVisible()
+        expect(
+          await productRegion.evaluate(
+            (element) => element.scrollWidth > element.clientWidth,
+          ),
+        ).toBe(true)
+      }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth + 1,

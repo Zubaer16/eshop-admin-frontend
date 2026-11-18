@@ -1,6 +1,7 @@
 'use client'
 import AdminLink from '@/components/ui/admin-link'
 import Image from 'next/image'
+import { Package2, Search } from 'lucide-react'
 import { Badge, statusKind } from '@/components/ui/badge'
 import { useState, type FormEvent } from 'react'
 import { api } from '@/lib/api/client'
@@ -86,69 +87,89 @@ export function Products() {
           ) : undefined
         }
       />
-      <Panel>
-        <form
-          className="flex flex-wrap gap-3 border-b border-line p-4"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setPage(1)
-            setSearch(draftSearch)
-          }}
-        >
-          <input
-            aria-label="Search products"
-            placeholder="Search product title"
-            className={controlClass + ' max-w-xs'}
-            maxLength={100}
-            value={draftSearch}
-            onChange={(e) => setDraftSearch(e.target.value)}
-          />
-          <Button type="submit" variant="secondary">
-            Search
-          </Button>
-          <select
-            aria-label="Filter category"
-            className={controlClass + ' w-auto'}
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value)
+      <Panel className="overflow-hidden">
+        <div className="product-toolbar">
+          <form
+            className="product-filter-form"
+            onSubmit={(e) => {
+              e.preventDefault()
               setPage(1)
+              setSearch(draftSearch)
             }}
           >
-            <option value="">All categories</option>
-            {categories.data?.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {categoryLabel(c, categories.data!)}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Filter product status"
-            className={controlClass + ' w-auto'}
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value)
-              setPage(1)
-            }}
-          >
-            <option value="">All statuses</option>
-            {['DRAFT', 'ACTIVE', 'ARCHIVED'].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <Button
-            variant="ghost"
-            type="button"
-            busy={resource.isRefreshing}
-            pendingLabel="Refreshing…"
-            onClick={resource.reload}
-          >
-            Refresh
-          </Button>
-        </form>
+            <label className="product-search">
+              <Search size={17} aria-hidden="true" />
+              <input
+                aria-label="Search products"
+                placeholder="Search product title"
+                className="product-search-input"
+                maxLength={100}
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+              />
+            </label>
+            <select
+              aria-label="Filter category"
+              className={controlClass + ' product-filter-control'}
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="">All categories</option>
+              {categories.data?.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {categoryLabel(c, categories.data!)}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter product status"
+              className={controlClass + ' product-filter-control'}
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value)
+                setPage(1)
+              }}
+            >
+              <option value="">All statuses</option>
+              {['DRAFT', 'ACTIVE', 'ARCHIVED'].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+            <Button type="submit" className="product-search-submit">
+              Search products
+            </Button>
+          </form>
+          <div className="product-toolbar-footer">
+            <div className="product-result-meta" aria-live="polite">
+              <span className="product-result-count">
+                {resource.data
+                  ? `${resource.data.total.toLocaleString('en-US')} products`
+                  : 'Products'}
+              </span>
+              {resource.isRefreshing && (
+                <span className="product-refresh-status" role="status">
+                  <span className="product-refresh-dot" aria-hidden="true" />
+                  Refreshing product data…
+                </span>
+              )}
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              busy={resource.isRefreshing}
+              pendingLabel="Refreshing…"
+              onClick={resource.reload}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
         <ErrorMessage text={error || categories.error} />
         {notice && (
-          <p role="status" className="p-4 text-sm text-primary">
+          <p role="status" className="px-5 py-3 text-sm text-primary">
             {notice}
           </p>
         )}
@@ -156,105 +177,187 @@ export function Products() {
           <ResourceState error={resource.error} retry={resource.reload} />
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="admin-table">
-                <thead className="bg-slate-50 text-xs text-muted">
+            <div
+              className="product-table-viewport"
+              role="region"
+              aria-label="Products list"
+              tabIndex={0}
+            >
+              <table
+                className="admin-table product-table"
+                aria-busy={resource.isRefreshing}
+              >
+                <colgroup>
+                  <col className="product-col-identity" />
+                  <col className="product-col-category" />
+                  <col className="product-col-price" />
+                  <col className="product-col-status" />
+                  <col className="product-col-stock" />
+                  <col className="product-col-variants" />
+                  <col className="product-col-badge" />
+                  <col className="product-col-actions" />
+                </colgroup>
+                <thead>
                   <tr>
-                    {[
-                      'Product / SKU',
-                      'Category',
-                      'Price',
-                      'Status',
-                      'Stock',
-                      'Variants',
-                      'Badge',
-                      'Actions',
-                    ].map((x) => (
-                      <th className="p-4" key={x}>
-                        {x}
-                      </th>
-                    ))}
+                    <th scope="col">Product</th>
+                    <th scope="col">Category</th>
+                    <th scope="col" className="product-numeric-heading">
+                      Price
+                    </th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Stock</th>
+                    <th scope="col" className="product-numeric-heading">
+                      Variants
+                    </th>
+                    <th scope="col">Merchandising</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-line">
-                  {resource.data.items.map((product) => (
-                    <tr key={product.id}>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          {product.gallery[0] && (
-                            <Image
-                              unoptimized
-                              src={product.gallery[0].url}
-                              alt={product.gallery[0].alt || product.title}
-                              width={44}
-                              height={44}
-                              className="size-11 rounded-lg border border-line object-cover"
-                            />
+                <tbody>
+                  {resource.data.items.map((product) => {
+                    const productCategories = product.categoryIds
+                      .map(
+                        (id) =>
+                          categories.data?.find((row) => row.id === id)?.name ||
+                          id,
+                      )
+                      .filter(Boolean)
+                    return (
+                      <tr key={product.id} data-testid="product-row">
+                        <td className="product-primary-cell">
+                          <div className="product-identity">
+                            {product.gallery[0] ? (
+                              <Image
+                                unoptimized
+                                src={product.gallery[0].url}
+                                alt={product.gallery[0].alt || product.title}
+                                width={48}
+                                height={48}
+                                className="product-thumbnail"
+                              />
+                            ) : (
+                              <div
+                                className="product-thumbnail product-thumbnail-empty"
+                                role="img"
+                                aria-label="No product image"
+                              >
+                                <Package2 size={19} aria-hidden="true" />
+                              </div>
+                            )}
+                            <div className="product-identity-copy">
+                              <p
+                                className="product-title"
+                                title={product.title}
+                              >
+                                {product.title}
+                              </p>
+                              <span className="product-sku">{product.sku}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          {productCategories.length ? (
+                            <div
+                              className="product-category-list"
+                              title={productCategories.join(', ')}
+                            >
+                              {productCategories.slice(0, 2).join(', ')}
+                              {productCategories.length > 2 && (
+                                <span className="product-category-extra">
+                                  +{productCategories.length - 2} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="product-muted-value">
+                              Uncategorized
+                            </span>
                           )}
-                          <p className="font-bold">{product.title}</p>
-                        </div>
-                        <p className="mt-1 text-xs text-muted">{product.sku}</p>
-                      </td>
-                      <td className="p-4">
-                        {product.categoryIds
-                          .map(
-                            (id) =>
-                              categories.data?.find((row) => row.id === id)
-                                ?.name || id,
-                          )
-                          .join(', ') || 'Uncategorized'}
-                      </td>
-                      <td className="p-4">
-                        {money(product.priceMinor, product.currency)}
-                      </td>
-                      <td className="p-4">
-                        <Badge kind={statusKind(product.status)}>
-                          {product.status}
-                        </Badge>
-                      </td>
-                      <td className="p-4">
-                        {product.hasVariants
-                          ? `${product.variants.length} variants`
-                          : product.stockOnHand + ' physical units'}
-                      </td>
-                      <td>{product.variants.length}</td>
-                      <td>{product.badge || product.tag || 'None'}</td>
-                      <td className="flex flex-wrap gap-2 p-4">
-                        <Button
-                          variant="secondary"
-                          onMouseEnter={() => prefetchAdminProduct(product.id)}
-                          onFocus={() => prefetchAdminProduct(product.id)}
-                          onTouchStart={() => prefetchAdminProduct(product.id)}
-                          onClick={() => setDetailId(product.id)}
-                        >
-                          Details
-                        </Button>
-                        {canWrite && (
-                          <>
+                        </td>
+                        <td className="product-price-cell">
+                          {money(product.priceMinor, product.currency)}
+                        </td>
+                        <td>
+                          <Badge kind={statusKind(product.status)}>
+                            {product.status}
+                          </Badge>
+                        </td>
+                        <td>
+                          <span className="product-stock-value">
+                            {product.hasVariants
+                              ? 'Managed by variants'
+                              : `${product.stockOnHand.toLocaleString('en-US')} units`}
+                          </span>
+                        </td>
+                        <td className="product-variant-cell">
+                          {product.variants.length.toLocaleString('en-US')}
+                        </td>
+                        <td>
+                          <div className="product-merchandising">
+                            {product.badge && (
+                              <Badge kind="info">{product.badge}</Badge>
+                            )}
+                            {product.tag && (
+                              <Badge kind="neutral">{product.tag}</Badge>
+                            )}
+                            {!product.badge && !product.tag && (
+                              <span className="product-muted-value">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="product-actions-cell">
+                          <div className="product-actions">
                             <Button
+                              size="sm"
                               variant="secondary"
-                              onClick={() => setEditing(product)}
+                              className="product-action-button"
+                              onMouseEnter={() =>
+                                prefetchAdminProduct(product.id)
+                              }
+                              onFocus={() => prefetchAdminProduct(product.id)}
+                              onTouchStart={() =>
+                                prefetchAdminProduct(product.id)
+                              }
+                              onClick={() => setDetailId(product.id)}
                             >
-                              Edit
+                              Details
                             </Button>
-                            <Button
-                              variant="danger"
-                              disabled={busy || product.status === 'ARCHIVED'}
-                              onClick={() => void archive(product)}
-                            >
-                              Archive
-                            </Button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {canWrite && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="product-action-button"
+                                  onClick={() => setEditing(product)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="danger"
+                                  className="product-action-button"
+                                  disabled={
+                                    busy || product.status === 'ARCHIVED'
+                                  }
+                                  onClick={() => void archive(product)}
+                                >
+                                  Archive
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
               {!resource.data.items.length && (
-                <p className="p-8 text-muted">
-                  No products match these filters.
-                </p>
+                <div className="product-empty-state">
+                  <Package2 size={28} aria-hidden="true" />
+                  <p>No products match these filters.</p>
+                  <span>Try changing the search or category filters.</span>
+                </div>
               )}
             </div>
             <Pagination data={resource.data} change={setPage} />
