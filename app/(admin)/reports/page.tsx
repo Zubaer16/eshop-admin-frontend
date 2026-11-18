@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Reports } from '@/components/management/reports'
 import type { Metadata } from 'next'
 export const metadata: Metadata = {
@@ -6,8 +7,12 @@ export const metadata: Metadata = {
 }
 export default function Page() {
   return (
-      <Suspense fallback={<p role="status">Loading section...</p>}>
-        <Reports />
-      </Suspense>
-    )
+    <Suspense
+      fallback={
+        <PageSkeleton variant="dashboard" label="Loading reports section" />
+      }
+    >
+      <Reports />
+    </Suspense>
+  )
 }

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigationRouter } from '@/components/layout/navigation-provider'
 import { api } from '@/lib/api/client'
 import {
   enableBrowserPush,
@@ -49,7 +49,7 @@ export function NotificationInbox() {
     }
   }, [])
   const { session } = useAuth(),
-    router = useRouter(),
+    router = useNavigationRouter(),
     [page, setPage] = useState(1),
     [unread, setUnread] = useState(false),
     [data, setData] = useState<Page | null>(null),

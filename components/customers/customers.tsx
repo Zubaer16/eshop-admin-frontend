@@ -81,7 +81,13 @@ export function Customers() {
             <option value="ACTIVE">Active</option>
             <option value="DISABLED">Disabled</option>
           </select>
-          <Button type="button" variant="ghost" onClick={resource.reload}>
+          <Button
+            type="button"
+            variant="ghost"
+            busy={resource.isRefreshing}
+            pendingLabel="Refreshing…"
+            onClick={resource.reload}
+          >
             Refresh customers
           </Button>
         </form>
@@ -221,7 +227,12 @@ function CustomerDetail({ id }: { id: string }) {
         <p className="text-sm text-muted">No orders yet.</p>
       )}
       <ErrorMessage text={resource.error} />
-      <Button variant="secondary" onClick={resource.reload}>
+      <Button
+        variant="secondary"
+        busy={resource.isRefreshing}
+        pendingLabel="Refreshing…"
+        onClick={resource.reload}
+      >
         Refresh customer
       </Button>
     </div>

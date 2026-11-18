@@ -1,5 +1,6 @@
 'use client'
 import { PageHeading } from '@/components/layout/page-heading'
+import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import {
   useResource,
@@ -122,9 +123,14 @@ export function Payments() {
           window is currently shown.
         </p>
       )}
-      <button className="text-sm font-bold text-primary" onClick={data.reload}>
+      <Button
+        variant="ghost"
+        busy={data.isRefreshing}
+        pendingLabel="Refreshing…"
+        onClick={data.reload}
+      >
         Refresh payment records
-      </button>
+      </Button>
       {data.data ? (
         <>
           <p className="text-xs text-muted">

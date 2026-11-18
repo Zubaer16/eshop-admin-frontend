@@ -246,7 +246,9 @@ function CategoryForm({
           Visible in navigation
         </label>
         <ErrorMessage text={error} />
-        <Button type="submit">{busy ? 'Saving…' : 'Save category'}</Button>
+        <Button type="submit" busy={busy} pendingLabel="Saving category…">
+          Save category
+        </Button>
       </fieldset>
     </form>
   )

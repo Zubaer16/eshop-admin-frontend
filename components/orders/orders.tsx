@@ -69,7 +69,13 @@ export function Orders() {
           />
         </label>
         <Button>Open order</Button>
-        <Button type="button" variant="secondary" onClick={list.reload}>
+        <Button
+          type="button"
+          variant="secondary"
+          busy={list.isRefreshing}
+          pendingLabel="Refreshing…"
+          onClick={list.reload}
+        >
           Refresh order list
         </Button>
       </form>

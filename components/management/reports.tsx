@@ -178,7 +178,13 @@ function Report({ kind, exportKind }: { kind: string; exportKind: string }) {
           </>
         )}
         <Button>Apply report filters</Button>
-        <Button type="button" variant="secondary" onClick={r.reload}>
+        <Button
+          type="button"
+          variant="secondary"
+          busy={r.isRefreshing}
+          pendingLabel="Refreshing…"
+          onClick={r.reload}
+        >
           Refresh report
         </Button>
         <Button

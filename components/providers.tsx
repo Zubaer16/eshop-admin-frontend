@@ -1,3 +1,11 @@
 'use client'
 import { AuthProvider } from '@/components/auth/auth-provider'
-export function AdminProviders({ children }: { children: React.ReactNode }) { return <AuthProvider>{children}</AuthProvider> }
+import { NavigationProvider } from '@/components/layout/navigation-provider'
+
+export function AdminProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <NavigationProvider>
+      <AuthProvider>{children}</AuthProvider>
+    </NavigationProvider>
+  )
+}

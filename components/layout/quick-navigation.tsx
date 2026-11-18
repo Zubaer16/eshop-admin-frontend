@@ -7,7 +7,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { useNavigationRouter } from '@/components/layout/navigation-provider'
 import { ArrowRight, Search, X } from 'lucide-react'
 import { prefetchAdminRoute } from '@/lib/admin-cache'
 
@@ -22,7 +23,7 @@ export function QuickNavigation({
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const pathname = usePathname()
-  const router = useRouter()
+  const router = useNavigationRouter()
   const matches = useMemo(() => {
     const term = query.trim().toLocaleLowerCase()
     return links.filter((link) =>

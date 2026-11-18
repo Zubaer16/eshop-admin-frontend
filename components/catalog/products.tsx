@@ -1,5 +1,5 @@
 'use client'
-import Link from 'next/link'
+import AdminLink from '@/components/ui/admin-link'
 import Image from 'next/image'
 import { Badge, statusKind } from '@/components/ui/badge'
 import { useState, type FormEvent } from 'react'
@@ -135,7 +135,13 @@ export function Products() {
               <option key={s}>{s}</option>
             ))}
           </select>
-          <Button variant="ghost" type="button" onClick={resource.reload}>
+          <Button
+            variant="ghost"
+            type="button"
+            busy={resource.isRefreshing}
+            pendingLabel="Refreshing…"
+            onClick={resource.reload}
+          >
             Refresh
           </Button>
         </form>
@@ -498,7 +504,9 @@ function ProductForm({
           </Field>
         )}
         <ErrorMessage text={error} />
-        <Button type="submit">{busy ? 'Saving…' : 'Save product'}</Button>
+        <Button type="submit" busy={busy} pendingLabel="Saving product…">
+          Save product
+        </Button>
       </fieldset>
     </form>
   )
@@ -544,13 +552,18 @@ function ProductDetail({ id, canWrite }: { id: string; canWrite: boolean }) {
         </p>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Link
+        <AdminLink
           className="text-sm font-bold text-primary"
           href={'/inventory?productId=' + id}
         >
           View inventory balances
-        </Link>
-        <Button variant="secondary" onClick={resource.reload}>
+        </AdminLink>
+        <Button
+          variant="secondary"
+          busy={resource.isRefreshing}
+          pendingLabel="Refreshing…"
+          onClick={resource.reload}
+        >
           Refresh product
         </Button>
       </div>
@@ -736,7 +749,9 @@ function VariantForm({
         )}
         <div className="sm:col-span-2">
           <ErrorMessage text={error} />
-          <Button type="submit">{busy ? 'Saving…' : 'Save variant'}</Button>
+          <Button type="submit" busy={busy} pendingLabel="Saving variant…">
+            Save variant
+          </Button>
         </div>
       </fieldset>
     </form>

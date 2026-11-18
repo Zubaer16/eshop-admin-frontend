@@ -128,8 +128,8 @@ export function MutationForm({
           </Button>
         </div>
       ) : (
-        <Button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : label}
+        <Button type="submit" busy={busy} pendingLabel="Saving…">
+          {label}
         </Button>
       )}
     </form>

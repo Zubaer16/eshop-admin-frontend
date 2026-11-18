@@ -11,6 +11,7 @@ import { adminCache, adminOwner, adminQueryKey } from '@/lib/admin-cache'
 import { useAuth } from '@/components/auth/auth-provider'
 import { Button } from '@/components/ui/button'
 import type { Page } from '@/lib/api/catalog'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
 
 export const message = (error: unknown) =>
   error instanceof Error ? error.message : 'The request could not be completed.'
@@ -42,6 +43,7 @@ export function useResource<T>(
     adminCache.getServerInvalidationVersion,
   )
   const [localData, setLocalData] = useState<T | null>(null)
+  const [localPending, setLocalPending] = useState(false)
   const [error, setError] = useState('')
   const [reloadVersion, setReloadVersion] = useState(0)
   const refreshGeneration = cacheable ? invalidationVersion : 0
@@ -50,6 +52,7 @@ export function useResource<T>(
     let active = true
     setError('')
     if (cacheable) {
+      setLocalPending(false)
       void adminCache.read<T>(route, stableQuery).catch((reason) => {
         if (active) setError(message(reason))
       })
@@ -60,13 +63,20 @@ export function useResource<T>(
 
     const controller = new AbortController()
     setLocalData(null)
+    setLocalPending(true)
     api
       .request<T>(route, { query: stableQuery, signal: controller.signal })
       .then((value) => {
-        if (active) setLocalData(value)
+        if (active) {
+          setLocalData(value)
+          setLocalPending(false)
+        }
       })
       .catch((reason) => {
-        if (active) setError(message(reason))
+        if (active) {
+          setError(message(reason))
+          setLocalPending(false)
+        }
       })
     return () => {
       active = false
@@ -94,7 +104,9 @@ export function useResource<T>(
   }, [route, cacheable, stableQuery])
 
   const data = cacheable ? adminCache.peek<T>(route, stableQuery) : localData
-  const isRefreshing = cacheable && adminCache.isPending(route, stableQuery)
+  const isRefreshing = cacheable
+    ? adminCache.isPending(route, stableQuery)
+    : localPending
   // The cache version is intentionally a render subscription; data is read from the cache above.
   void cacheVersion
   return { data, error, reload, isRefreshing }
@@ -113,9 +125,11 @@ export function ErrorMessage({ text }: { text: string }) {
 export function ResourceState({
   error,
   retry,
+  variant = 'table',
 }: {
   error: string
   retry: () => void
+  variant?: 'dashboard' | 'table' | 'grid' | 'form' | 'detail'
 }) {
   return error ? (
     <div>
@@ -125,9 +139,11 @@ export function ResourceState({
       </Button>
     </div>
   ) : (
-    <p role="status" className="p-6 text-sm text-muted">
-      Loading current data…
-    </p>
+    <PageSkeleton
+      variant={variant}
+      label="Loading current data"
+      showHeading={false}
+    />
   )
 }
 export function Pagination({

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import Link from 'next/link'
+import AdminLink from '@/components/ui/admin-link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -56,7 +56,7 @@ const links = [
 ]
 function Logo() {
   return (
-    <Link href="/dashboard" className="flex items-center gap-3">
+    <AdminLink href="/dashboard" className="flex items-center gap-3">
       <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-xl font-black text-white shadow-[0_7px_17px_rgba(36,89,232,.22)]">
         E
       </span>
@@ -68,7 +68,7 @@ function Logo() {
           ADMIN WORKSPACE
         </span>
       </span>
-    </Link>
+    </AdminLink>
   )
 }
 function Sidebar({ close }: { close?: () => void }) {
@@ -85,7 +85,7 @@ function Sidebar({ close }: { close?: () => void }) {
         {visibleLinks.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
-            <Link
+            <AdminLink
               onClick={close}
               onMouseEnter={() => prefetchAdminRoute(href)}
               onFocus={() => prefetchAdminRoute(href)}
@@ -104,7 +104,7 @@ function Sidebar({ close }: { close?: () => void }) {
               {active && (
                 <span className="ml-auto size-1.5 rounded-full bg-primary" />
               )}
-            </Link>
+            </AdminLink>
           )
         })}
       </nav>
@@ -196,13 +196,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </span>
           <>
             <PushLifecycle />
-            <Link
+            <AdminLink
               href="/notifications"
               aria-label="Notification inbox"
               className="rounded-xl border border-line p-2"
             >
               <Bell size={19} />
-            </Link>
+            </AdminLink>
           </>
           <div
             className="flex size-10 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white"

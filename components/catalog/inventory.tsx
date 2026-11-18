@@ -82,7 +82,13 @@ export function Inventory() {
             <option value="true">Low physical stock</option>
             <option value="false">Above threshold</option>
           </select>
-          <Button variant="ghost" type="button" onClick={resource.reload}>
+          <Button
+            variant="ghost"
+            type="button"
+            busy={resource.isRefreshing}
+            pendingLabel="Refreshing…"
+            onClick={resource.reload}
+          >
             Refresh
           </Button>
         </form>
@@ -353,12 +359,15 @@ function BalanceDetail({
                 request before closing this dialog.
               </p>
             )}
-            <Button disabled={busy || !balance.data} type="submit">
-              {busy
-                ? 'Saving…'
-                : pending
-                  ? 'Retry same adjustment'
-                  : 'Apply adjustment'}
+            <Button
+              busy={busy}
+              pendingLabel={
+                pending ? 'Retrying adjustment…' : 'Applying adjustment…'
+              }
+              disabled={!balance.data}
+              type="submit"
+            >
+              {pending ? 'Retry same adjustment' : 'Apply adjustment'}
             </Button>
             <Button
               disabled={busy}
@@ -408,7 +417,12 @@ function BalanceDetail({
                 onChange={(e) => setThreshold(e.target.value)}
               />
             </Field>
-            <Button disabled={busy || !balance.data} type="submit">
+            <Button
+              busy={busy}
+              pendingLabel="Saving threshold…"
+              disabled={!balance.data}
+              type="submit"
+            >
               Save threshold
             </Button>
           </form>
@@ -417,7 +431,12 @@ function BalanceDetail({
       <Panel>
         <div className="flex items-center justify-between p-4">
           <h3 className="font-bold">Append-only movement history</h3>
-          <Button variant="ghost" onClick={movements.reload}>
+          <Button
+            variant="ghost"
+            busy={movements.isRefreshing}
+            pendingLabel="Refreshing…"
+            onClick={movements.reload}
+          >
             Refresh movements
           </Button>
         </div>

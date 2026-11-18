@@ -305,7 +305,13 @@ export function MediaLibrary({
             <option key={x}>{x}</option>
           ))}
         </select>
-        <Button type="button" variant="ghost" onClick={resource.reload}>
+        <Button
+          type="button"
+          variant="ghost"
+          busy={resource.isRefreshing}
+          pendingLabel="Refreshing…"
+          onClick={resource.reload}
+        >
           Refresh library
         </Button>
       </form>
@@ -316,7 +322,11 @@ export function MediaLibrary({
         </p>
       )}
       {!resource.data ? (
-        <ResourceState error={resource.error} retry={resource.reload} />
+        <ResourceState
+          error={resource.error}
+          retry={resource.reload}
+          variant="grid"
+        />
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -521,10 +531,12 @@ export function ProductMedia({
         ))}
         <ErrorMessage text={error} />
         <Button
+          busy={busy}
+          pendingLabel="Saving gallery…"
           disabled={!dirty || product.status === 'ARCHIVED'}
           onClick={() => void save()}
         >
-          {busy ? 'Saving…' : 'Save gallery'}
+          Save gallery
         </Button>
         {dirty && (
           <p role="status" className="text-xs text-amber-800">

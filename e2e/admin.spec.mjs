@@ -202,6 +202,11 @@ test('restricted staff cannot open owner workspace', async ({ page }) => {
   await expect(
     page.getByRole('button', { name: 'Create staff account' }),
   ).toHaveCount(0)
+  await expect(
+    page.getByRole('status', {
+      name: /Loading admin section|Loading .* section/,
+    }),
+  ).toHaveCount(0)
 })
 
 test('editing preserves the existing endpoint, currency and minor-unit payload', async ({
@@ -404,4 +409,103 @@ test('owner configures a default delivery charge with a revision and no tax cont
     shippingMinor: 0,
   })
   await expect(page.getByLabel(/tax/i)).toHaveCount(0)
+})
+
+test('catalog loading uses an accessible skeleton until the API data arrives', async ({
+  page,
+}) => {
+  await connect(page)
+  await page.route('**/v1/admin/products**', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 550))
+    await route.fulfill({ json: pageOf([product]) })
+  })
+  await page.goto('/products')
+  await expect(
+    page.getByRole('status', { name: 'Loading current data' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('cell', { name: 'Connected product SKU-001' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('status', { name: 'Loading current data' }),
+  ).toHaveCount(0)
+})
+
+test('quick navigation displays the delayed global route progress indicator', async ({
+  page,
+}) => {
+  await connect(page)
+  await page.route('**/products**', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname === '/products')
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    await route.continue()
+  })
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: 'Jump to section' }).click()
+  await page.getByRole('option', { name: 'Products' }).click()
+  await expect(
+    page.getByRole('progressbar', { name: 'Loading page' }),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/products$/)
+  await expect(page.locator('.admin-table')).toBeVisible()
+  await expect(
+    page.getByRole('progressbar', { name: 'Loading page' }),
+  ).toHaveCount(0)
+})
+
+test('save feedback keeps the button width stable and prevents repeat submission', async ({
+  page,
+}) => {
+  await connect(page)
+  let writes = 0
+  await page.route('**/v1/admin/products/' + id, async (route) => {
+    if (route.request().method() === 'PATCH') {
+      writes++
+      await new Promise((resolve) => setTimeout(resolve, 550))
+      await route.fulfill({ json: product })
+      return
+    }
+    await route.fulfill({ json: product })
+  })
+  await page.goto('/products')
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  const save = page.getByRole('button', { name: 'Save product', exact: true })
+  const before = await save.boundingBox()
+  await save.click()
+  const pending = page.getByRole('button', { name: /Saving product/ })
+  await expect(pending).toBeDisabled()
+  await expect(pending).toHaveAttribute('aria-busy', 'true')
+  const during = await pending.boundingBox()
+  expect(during.width).toBeCloseTo(before.width, 0)
+  await expect.poll(() => writes).toBe(1)
+  await expect(page.getByText('Product saved.')).toBeVisible()
+  await expect(pending).toHaveCount(0)
+})
+
+test('cached product data stays visible while a refresh is pending', async ({
+  page,
+}) => {
+  await connect(page)
+  await page.goto('/products')
+  const productRow = page.getByRole('cell', {
+    name: 'Connected product SKU-001',
+  })
+  await expect(productRow).toBeVisible()
+
+  let refreshes = 0
+  await page.route('**/v1/admin/products**', async (route) => {
+    refreshes++
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    await route.fulfill({ json: pageOf([product]) })
+  })
+
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  const refreshing = page.getByRole('button', { name: /Refreshing/ })
+  await expect(refreshing).toBeDisabled()
+  await expect(productRow).toBeVisible()
+  await expect.poll(() => refreshes).toBe(1)
+  await expect(
+    page.getByRole('button', { name: 'Refresh', exact: true }),
+  ).toBeEnabled()
 })

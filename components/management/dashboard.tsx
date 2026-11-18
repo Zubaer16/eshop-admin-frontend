@@ -1,5 +1,5 @@
 'use client'
-import Link from 'next/link'
+import AdminLink from '@/components/ui/admin-link'
 import { useState } from 'react'
 import {
   ArrowRight,
@@ -73,17 +73,21 @@ export function Dashboard() {
         title="Good to see you again."
         description="Here is what's happening across your store."
         action={
-          <Link href="/products">
+          <AdminLink href="/products">
             <Button>
               <ShoppingBag size={16} />
               Manage products
               <ArrowRight size={15} />
             </Button>
-          </Link>
+          </AdminLink>
         }
       />
       {!data ? (
-        <ResourceState error={resource.error} retry={resource.reload} />
+        <ResourceState
+          error={resource.error}
+          retry={resource.reload}
+          variant="dashboard"
+        />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -232,13 +236,13 @@ export function Dashboard() {
                   }
                 />
               )}
-              <Link
+              <AdminLink
                 href="/inventory"
                 className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-primary"
               >
                 Review inventory
                 <ArrowRight size={14} />
-              </Link>
+              </AdminLink>
             </Panel>
           </div>
           <Panel className="overflow-hidden">
@@ -247,12 +251,12 @@ export function Dashboard() {
                 title="Recent orders"
                 subtitle="Current order and shipment states"
                 action={
-                  <Link
+                  <AdminLink
                     href="/orders"
                     className="text-xs font-bold text-primary"
                   >
                     View all orders →
-                  </Link>
+                  </AdminLink>
                 }
               />
             </div>
@@ -294,12 +298,12 @@ export function Dashboard() {
                         </td>
                         <td>{row.fulfillmentStatus || 'Not started'}</td>
                         <td>
-                          <Link
+                          <AdminLink
                             href={'/orders?order=' + row.id}
                             className="text-xs font-bold text-primary"
                           >
                             View order
-                          </Link>
+                          </AdminLink>
                         </td>
                       </tr>
                     ))}
@@ -321,7 +325,13 @@ export function Dashboard() {
               <PackageCheck size={15} />
               Current store data; totals retain their original currency.
             </span>
-            <Button variant="ghost" size="sm" onClick={resource.reload}>
+            <Button
+              variant="ghost"
+              size="sm"
+              busy={resource.isRefreshing}
+              pendingLabel="Refreshing…"
+              onClick={resource.reload}
+            >
               Refresh dashboard
             </Button>
           </div>
@@ -362,7 +372,8 @@ function CollectionChart({ currency }: { currency: string }) {
   const r = useResource<{
     items: { date: string; netCollectedMinor: string }[]
   }>('/v1/admin/reports/daily', { currency })
-  if (!r.data) return <ResourceState error={r.error} retry={r.reload} />
+  if (!r.data)
+    return <ResourceState error={r.error} retry={r.reload} variant="detail" />
   const rows = r.data.items.filter((item) =>
     /^-?\d+$/.test(item.netCollectedMinor),
   )

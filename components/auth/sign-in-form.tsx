@@ -1,9 +1,10 @@
 'use client'
-import Link from 'next/link'
+import AdminLink from '@/components/ui/admin-link'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useNavigationRouter } from '@/components/layout/navigation-provider'
 import { api, ApiRequestError, safeReturnTo } from '@/lib/api/client'
 import { useAuth } from '@/components/auth/auth-provider'
+import { Button } from '@/components/ui/button'
 export function SignInForm({
   register = false,
   staff = false,
@@ -12,7 +13,7 @@ export function SignInForm({
   staff?: boolean
 }) {
   const { session, ready } = useAuth(),
-    router = useRouter()
+    router = useNavigationRouter()
   const [email, setEmail] = useState(''),
     [password, setPassword] = useState(''),
     [confirm, setConfirm] = useState('')
@@ -74,9 +75,9 @@ export function SignInForm({
 
   return (
     <section className="mx-auto my-10 w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
-      <Link href="/" className="text-xl font-black text-primary">
+      <AdminLink href="/" className="text-xl font-black text-primary">
         eShop{staff ? ' Admin' : ''}
-      </Link>
+      </AdminLink>
       <h1 className="mt-7 text-3xl font-black">
         {register
           ? 'Create your account'
@@ -148,17 +149,19 @@ export function SignInForm({
             />
           </label>
         )}
-        <button
-          className="h-12 w-full rounded-xl bg-primary px-5 font-bold text-white disabled:opacity-50"
-          disabled={busy || !mounted || !ready || session.status === 'checking'}
+        <Button
+          className="h-12 w-full px-5 font-bold"
+          busy={busy}
+          pendingLabel="Please wait…"
+          disabled={!mounted || !ready || session.status === 'checking'}
           type="submit"
         >
-          {busy ? 'Please wait…' : register ? 'Create account' : 'Sign in'}
-        </button>
+          {register ? 'Create account' : 'Sign in'}
+        </Button>
       </form>
       {!staff && (
         <div className="mt-5 flex flex-wrap justify-between gap-3 text-sm font-semibold text-primary">
-          <Link
+          <AdminLink
             href={
               (register ? '/sign-in' : '/sign-up') +
               '?next=' +
@@ -168,8 +171,8 @@ export function SignInForm({
             {register
               ? 'Already have an account? Sign in'
               : 'Create an account'}
-          </Link>
-          <Link href="/forgot-password">Forgot password?</Link>
+          </AdminLink>
+          <AdminLink href="/forgot-password">Forgot password?</AdminLink>
         </div>
       )}
     </section>

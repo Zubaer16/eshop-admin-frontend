@@ -1,5 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { Slot } from '@radix-ui/react-slot'
+import { LoaderCircle } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
@@ -23,17 +24,68 @@ export const buttonVariants = cva(
   },
 )
 type Props = ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> & { asChild?: boolean }
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+    busy?: boolean
+    pendingLabel?: string
+  }
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
-  { variant, size, asChild = false, className, ...props },
+  {
+    variant,
+    size,
+    asChild = false,
+    className,
+    busy = false,
+    pendingLabel,
+    disabled,
+    children,
+    'aria-busy': ariaBusy,
+    ...props
+  },
   ref,
 ) {
   const Component = asChild ? Slot : 'button'
+  const busyText = pendingLabel ?? 'Saving…'
+  const content =
+    (busy || pendingLabel !== undefined) && !asChild ? (
+      <span className="inline-grid place-items-center align-middle">
+        <span
+          className={cn(
+            '[grid-area:1/1] inline-flex items-center justify-center',
+            busy && 'invisible',
+          )}
+          aria-hidden={busy || undefined}
+        >
+          {children}
+        </span>
+        <span
+          className={cn(
+            '[grid-area:1/1] inline-flex items-center justify-center gap-2',
+            !busy && 'invisible',
+          )}
+          aria-hidden={!busy || undefined}
+        >
+          <LoaderCircle
+            aria-hidden="true"
+            size={16}
+            className="animate-spin motion-reduce:animate-none"
+          />
+          {busyText}
+        </span>
+      </span>
+    ) : (
+      children
+    )
+
   return (
     <Component
       ref={ref}
       className={cn(buttonVariants({ variant, size }), className)}
+      disabled={busy || disabled}
+      aria-busy={busy || ariaBusy || undefined}
       {...props}
-    />
+    >
+      {content}
+    </Component>
   )
 })

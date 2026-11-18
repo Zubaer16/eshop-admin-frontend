@@ -83,7 +83,12 @@ function ShippingEditor() {
           Configure country delivery rate
         </Button>
         <Button onClick={() => setZone(null)}>Create delivery zone</Button>
-        <Button variant="secondary" onClick={refresh}>
+        <Button
+          variant="secondary"
+          busy={rates.isRefreshing || zones.isRefreshing}
+          pendingLabel="Refreshing…"
+          onClick={refresh}
+        >
           Refresh policies
         </Button>
       </div>

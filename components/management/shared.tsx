@@ -176,7 +176,9 @@ export function SpecForm({
           </Button>
         </div>
       ) : (
-        <Button disabled={busy}>{busy ? 'Saving…' : title}</Button>
+        <Button busy={busy} pendingLabel="Saving…">
+          {title}
+        </Button>
       )}
     </form>
   )
@@ -195,7 +197,12 @@ export function ReadPanel({
   return (
     <section className="space-y-4 rounded-2xl border bg-white p-5">
       <h3 className="text-xl font-bold">{title}</h3>
-      <Button variant="secondary" onClick={r.reload}>
+      <Button
+        variant="secondary"
+        busy={r.isRefreshing}
+        pendingLabel="Refreshing…"
+        onClick={r.reload}
+      >
         Refresh {title}
       </Button>
       {r.data !== null ? (
@@ -226,7 +233,12 @@ export function PagedPanel({
   return (
     <section className="space-y-4">
       <h3 className="text-xl font-bold">{title}</h3>
-      <Button variant="secondary" onClick={r.reload}>
+      <Button
+        variant="secondary"
+        busy={r.isRefreshing}
+        pendingLabel="Refreshing…"
+        onClick={r.reload}
+      >
         Refresh {title}
       </Button>
       {r.data ? (
