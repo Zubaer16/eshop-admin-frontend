@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
@@ -11,6 +12,7 @@ import { usePathname } from 'next/navigation'
 import { useNavigationRouter } from '@/components/layout/navigation-provider'
 import { ArrowRight, Search, X } from 'lucide-react'
 import { prefetchAdminRoute } from '@/lib/admin-cache'
+import { createAdminPrefetchIntent } from '@/lib/admin-prefetch-intent'
 
 type NavigationLink = { href: string; label: string }
 
@@ -24,6 +26,7 @@ export function QuickNavigation({
   const [activeIndex, setActiveIndex] = useState(0)
   const pathname = usePathname()
   const router = useNavigationRouter()
+  const prefetchIntent = useRef(createAdminPrefetchIntent()).current
   const matches = useMemo(() => {
     const term = query.trim().toLocaleLowerCase()
     return links.filter((link) =>
@@ -53,6 +56,8 @@ export function QuickNavigation({
     setOpen(false)
   }, [pathname])
 
+  useEffect(() => () => prefetchIntent.cancel(), [prefetchIntent])
+
   function changeOpen(next: boolean) {
     if (next) {
       setQuery('')
@@ -65,7 +70,7 @@ export function QuickNavigation({
     prefetchAdminRoute(href)
   }
   function navigate(href: string) {
-    prefetch(href)
+    prefetchIntent.cancel()
     setOpen(false)
     router.push(href)
   }
@@ -79,7 +84,8 @@ export function QuickNavigation({
             matches.length) %
           matches.length
         setActiveIndex(nextIndex)
-        prefetch(matches[nextIndex].href)
+        const href = matches[nextIndex].href
+        prefetchIntent.schedule(() => prefetch(href))
       }
     } else if (event.key === 'Enter' && matches[activeIndex]) {
       event.preventDefault()
@@ -170,10 +176,17 @@ export function QuickNavigation({
                   aria-selected={index === activeIndex}
                   onMouseEnter={() => {
                     setActiveIndex(index)
+                    prefetchIntent.schedule(() => prefetch(link.href))
+                  }}
+                  onMouseLeave={prefetchIntent.cancel}
+                  onFocus={() => {
+                    prefetchIntent.cancel()
                     prefetch(link.href)
                   }}
-                  onFocus={() => prefetch(link.href)}
-                  onTouchStart={() => prefetch(link.href)}
+                  onTouchStart={() => {
+                    prefetchIntent.cancel()
+                    prefetch(link.href)
+                  }}
                   onClick={() => navigate(link.href)}
                   className={`flex min-h-11 w-full items-center justify-between rounded-xl px-4 text-left text-sm font-semibold focus-visible:outline-2 focus-visible:outline-primary ${index === activeIndex ? 'bg-blue-50 text-primary' : 'text-ink hover:bg-slate-50'}`}
                 >

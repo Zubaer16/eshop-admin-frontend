@@ -302,6 +302,49 @@ test('fresh identity updates permissions without accepting a different user subj
   assert.equal(f.client.getSnapshot().status, 'anonymous')
 })
 
+test('concurrent identity revalidation calls share one /me request per session epoch', async () => {
+  const staff = {
+    ...user,
+    role: 'STAFF',
+    staffRole: 'SUPPORT',
+    permissions: ['orders.manage'],
+  }
+  let holdIdentity = false
+  let releaseIdentity
+  let identityReads = 0
+  const f = setup({
+    audience: 'staff',
+    handler: (call) => {
+      if (call.url.pathname.endsWith('/login')) return json(pair('a', staff))
+      if (call.url.pathname.endsWith('/me')) {
+        identityReads++
+        if (holdIdentity)
+          return new Promise((resolve) => {
+            releaseIdentity = () => resolve(json(staff))
+          })
+        return json(staff)
+      }
+      return undefined
+    },
+  })
+  await f.client.signIn({ email: staff.email, password: 'fixture-password' })
+  assert.equal(identityReads, 1)
+
+  holdIdentity = true
+  const first = f.client.refreshIdentity()
+  const second = f.client.refreshIdentity()
+  await Promise.resolve()
+  await Promise.resolve()
+  assert.equal(identityReads, 2)
+  releaseIdentity()
+  await Promise.all([first, second])
+  assert.equal(identityReads, 2)
+
+  holdIdentity = false
+  await f.client.refreshIdentity()
+  assert.equal(identityReads, 3)
+})
+
 test('incorrect current password does not rotate or destroy an otherwise valid session', async () => {
   const f = setup()
   await f.client.signIn({ email: user.email, password: 'fixture-password' })

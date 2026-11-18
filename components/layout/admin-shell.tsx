@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import AdminLink from '@/components/ui/admin-link'
 import { usePathname } from 'next/navigation'
@@ -33,7 +33,9 @@ import { Button } from '@/components/ui/button'
 import { QuickNavigation } from './quick-navigation'
 import { PushLifecycle } from '@/components/notifications/push-lifecycle'
 import { prefetchAdminRoute } from '@/lib/admin-cache'
+import { createAdminPrefetchIntent } from '@/lib/admin-prefetch-intent'
 import { AdminWorkspacePreload } from './admin-workspace-preload'
+import { useNavigationRouter } from './navigation-provider'
 const links = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
@@ -74,8 +76,15 @@ function Logo() {
 }
 function Sidebar({ close }: { close?: () => void }) {
   const pathname = usePathname()
+  const router = useNavigationRouter()
   const { session } = useAuth()
+  const prefetchIntent = useRef(createAdminPrefetchIntent()).current
   const visibleLinks = links.filter((link) => canVisit(link.href, session.user))
+  useEffect(() => () => prefetchIntent.cancel(), [prefetchIntent])
+  function prefetch(href: string) {
+    router.prefetch(href)
+    prefetchAdminRoute(href)
+  }
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-white px-5 py-6">
       <Logo />
@@ -87,10 +96,21 @@ function Sidebar({ close }: { close?: () => void }) {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <AdminLink
-              onClick={close}
-              onMouseEnter={() => prefetchAdminRoute(href)}
-              onFocus={() => prefetchAdminRoute(href)}
-              onTouchStart={() => prefetchAdminRoute(href)}
+              prefetch={false}
+              onMouseEnter={() => prefetchIntent.schedule(() => prefetch(href))}
+              onMouseLeave={prefetchIntent.cancel}
+              onFocus={() => {
+                prefetchIntent.cancel()
+                prefetch(href)
+              }}
+              onTouchStart={() => {
+                prefetchIntent.cancel()
+                prefetch(href)
+              }}
+              onClick={() => {
+                prefetchIntent.cancel()
+                close?.()
+              }}
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}

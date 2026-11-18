@@ -10,6 +10,7 @@ import {
   getAdminPromotionCampaignPrefetchPlan,
   getAdminWorkspacePreloadRoutes,
 } from '../lib/admin-prefetch-core.ts'
+import { createAdminPrefetchIntent } from '../lib/admin-prefetch-intent.ts'
 
 const id = '11111111-1111-4111-8111-111111111111'
 
@@ -102,4 +103,43 @@ test('promotion campaign preload is a single approved read resource', () => {
   assert.deepEqual(getAdminPromotionCampaignPrefetchPlan(), [
     ['/v1/admin/promotions/campaigns', { page: 1, limit: 20 }],
   ])
+})
+
+test('pointer intent is delayed, replaced by the latest target, and cancellable', () => {
+  const jobs = new Map()
+  const cancelled = new Set()
+  let nextId = 0
+  const delays = []
+  const intent = createAdminPrefetchIntent(
+    (callback, delay) => {
+      const id = nextId++
+      jobs.set(id, () => {
+        jobs.delete(id)
+        callback()
+      })
+      delays.push(delay)
+      return id
+    },
+    (id) => {
+      cancelled.add(id)
+      jobs.delete(id)
+    },
+  )
+  const calls = []
+
+  intent.schedule(() => calls.push('products'))
+  intent.schedule(() => calls.push('categories'))
+  assert.deepEqual(delays, [250, 250])
+  assert.ok(cancelled.has(0))
+  for (const [id, callback] of jobs) {
+    if (!cancelled.has(id)) callback()
+  }
+  assert.deepEqual(calls, ['categories'])
+
+  intent.schedule(() => calls.push('orders'))
+  intent.cancel()
+  for (const [id, callback] of jobs) {
+    if (!cancelled.has(id)) callback()
+  }
+  assert.deepEqual(calls, ['categories'])
 })

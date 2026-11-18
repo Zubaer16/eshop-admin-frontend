@@ -191,10 +191,41 @@ test('product detail data preloads on intent without opening the dialog', async 
     page.getByRole('cell', { name: 'Connected product SKU-001' }),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Details', exact: true }).hover()
+  await page.waitForTimeout(275)
   await expect
     .poll(() => requests.includes('/v1/admin/products/' + id))
     .toBe(true)
   await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('sidebar route segments prefetch only after a deliberate hover dwell', async ({
+  page,
+}) => {
+  const routePrefetches = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === '/inventory' && url.searchParams.has('_rsc'))
+      routePrefetches.push(url.href)
+  })
+  await connect(page)
+  await page.goto('/products')
+  await page.waitForTimeout(350)
+  expect(routePrefetches).toHaveLength(0)
+
+  const inventoryLink = page
+    .getByRole('link', {
+      name: 'Inventory',
+      exact: true,
+    })
+    .first()
+  await inventoryLink.hover()
+  await page.waitForTimeout(60)
+  await page.mouse.move(8, 8)
+  await page.waitForTimeout(280)
+  expect(routePrefetches).toHaveLength(0)
+
+  await inventoryLink.hover()
+  await expect.poll(() => routePrefetches.length).toBeGreaterThan(0)
 })
 
 test('products do not revalidate on ordinary window focus or scroll events', async ({
@@ -216,6 +247,36 @@ test('products do not revalidate on ordinary window focus or scroll events', asy
   })
   await page.waitForTimeout(100)
   expect(productListReads).toBe(1)
+})
+
+test('identity checks coalesce a tab return and its paired focus event', async ({
+  page,
+}) => {
+  let identityReads = 0
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/v1/admin/auth/me') identityReads++
+  })
+  await connect(page)
+  await page.goto('/products')
+  await expect(page.getByTestId('product-row')).toHaveCount(1)
+  await expect.poll(() => identityReads).toBe(1)
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    })
+    document.dispatchEvent(new Event('visibilitychange'))
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'visible',
+    })
+    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new Event('focus'))
+  })
+  await expect.poll(() => identityReads).toBe(2)
+  await page.waitForTimeout(100)
+  expect(identityReads).toBe(2)
 })
 
 test('product hover prefetch is cancelled when the pointer does not dwell', async ({

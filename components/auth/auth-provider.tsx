@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation'
 import { useNavigationRouter } from '@/components/layout/navigation-provider'
 import { api, authChannelName, sessionSource } from '@/lib/api/client'
 import type { Session } from '@/lib/api/runtime'
+import { bindAdminIdentityRevalidation } from '@/lib/auth-identity-lifecycle'
 const Context = createContext<{ session: Session; ready: boolean } | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const session = useSyncExternalStore(
@@ -38,22 +39,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event.data.type === 'login')
           void api.restoreSession().then(() => api.restoreSession())
       }
-    const check = () => {
-      if (
-        document.visibilityState === 'visible' &&
-        api.getSnapshot().status === 'authenticated'
-      )
-        void api.refreshIdentity().catch(() => undefined)
-    }
-    window.addEventListener('focus', check)
-    document.addEventListener('visibilitychange', check)
-    const timer = setInterval(check, 60000)
+    const unbindIdentityRevalidation = bindAdminIdentityRevalidation(
+      () => {
+        if (api.getSnapshot().status === 'authenticated')
+          return api.refreshIdentity()
+        return Promise.resolve()
+      },
+      document,
+      { focusTarget: window },
+    )
     return () => {
       active = false
       channel?.close()
-      clearInterval(timer)
-      window.removeEventListener('focus', check)
-      document.removeEventListener('visibilitychange', check)
+      unbindIdentityRevalidation()
     }
   }, [])
   return (

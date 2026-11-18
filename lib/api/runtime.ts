@@ -176,6 +176,8 @@ export function createApiClient(config: {
   const pending = new Set<AbortController>()
   let refreshing: { epoch: number; promise: Promise<void> } | null = null
   let restoring: Promise<void> | null = null
+  let identityRefreshing: { epoch: number; promise: Promise<void> } | null =
+    null
   const allowed = (user: ApiUser) =>
     config.audience === 'customer'
       ? user.role === 'CUSTOMER'
@@ -417,27 +419,38 @@ export function createApiClient(config: {
       }
     }
   }
-  async function refreshIdentity() {
-    if (!tokens) return
+  function refreshIdentity(): Promise<void> {
+    if (!tokens) return Promise.resolve()
     const ticket = epoch
-    const user = readUser(
-      await request(
-        config.audience === 'customer' ? '/v1/auth/me' : '/v1/admin/auth/me',
-      ),
-    )
-    sameSession(ticket)
-    if (!allowed(user) || (snapshot.user && user.id !== snapshot.user.id)) {
-      await signOut()
-      throw new ApiRequestError(
-        403,
-        'This account cannot use this application.',
+    if (identityRefreshing?.epoch === ticket) return identityRefreshing.promise
+
+    const promise = (async () => {
+      const user = readUser(
+        await request(
+          config.audience === 'customer' ? '/v1/auth/me' : '/v1/admin/auth/me',
+        ),
       )
-    }
-    if (
-      snapshot.status !== 'authenticated' ||
-      JSON.stringify(user) !== JSON.stringify(snapshot.user)
-    )
-      publish('authenticated', user)
+      sameSession(ticket)
+      if (!allowed(user) || (snapshot.user && user.id !== snapshot.user.id)) {
+        await signOut()
+        throw new ApiRequestError(
+          403,
+          'This account cannot use this application.',
+        )
+      }
+      if (
+        snapshot.status !== 'authenticated' ||
+        JSON.stringify(user) !== JSON.stringify(snapshot.user)
+      )
+        publish('authenticated', user)
+    })()
+    identityRefreshing = { epoch: ticket, promise }
+    void promise
+      .finally(() => {
+        if (identityRefreshing?.promise === promise) identityRefreshing = null
+      })
+      .catch(() => undefined)
+    return promise
   }
   function restoreSession(): Promise<void> {
     if (!config.session || tokens) return Promise.resolve()

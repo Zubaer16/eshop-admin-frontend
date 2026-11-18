@@ -59,7 +59,7 @@ export function Products() {
     hoverPrefetchTimer.current = setTimeout(() => {
       hoverPrefetchTimer.current = null
       prefetchAdminProduct(id)
-    }, 180)
+    }, 250)
   }
   useEffect(
     () => () => {
@@ -330,13 +330,21 @@ export function Products() {
                               variant="secondary"
                               className="product-action-button"
                               onMouseEnter={() =>
-                                prefetchAdminProduct(product.id)
+                                scheduleProductHoverPrefetch(product.id)
                               }
-                              onFocus={() => prefetchAdminProduct(product.id)}
-                              onTouchStart={() =>
+                              onMouseLeave={cancelProductHoverPrefetch}
+                              onFocus={() => {
+                                cancelProductHoverPrefetch()
                                 prefetchAdminProduct(product.id)
-                              }
-                              onClick={() => setDetailId(product.id)}
+                              }}
+                              onTouchStart={() => {
+                                cancelProductHoverPrefetch()
+                                prefetchAdminProduct(product.id)
+                              }}
+                              onClick={() => {
+                                cancelProductHoverPrefetch()
+                                setDetailId(product.id)
+                              }}
                             >
                               Details
                             </Button>
