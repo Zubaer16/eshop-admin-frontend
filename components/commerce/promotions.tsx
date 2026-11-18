@@ -11,6 +11,7 @@ import {
   message,
 } from '@/components/catalog/shared'
 import { Button } from '@/components/ui/button'
+import { prefetchAdminPromotionCampaigns } from '@/lib/admin-cache'
 import { Field, Check, MutationForm, fieldClass, text, number } from './forms'
 type Campaign = {
   id: string
@@ -59,6 +60,9 @@ export function Promotions() {
         </Button>
         <Button
           variant={tab === 'campaigns' ? 'primary' : 'secondary'}
+          onMouseEnter={prefetchAdminPromotionCampaigns}
+          onFocus={prefetchAdminPromotionCampaigns}
+          onTouchStart={prefetchAdminPromotionCampaigns}
           onClick={() => setTab('campaigns')}
         >
           Campaigns

@@ -86,6 +86,7 @@ async function connect(page, identity = user) {
         ],
       }
     else if (path === '/v1/admin/products') data = pageOf([product])
+    else if (path === '/v1/admin/products/' + id) data = product
     else if (path === '/v1/admin/categories')
       data = [{ id, name: 'Clothing', slug: 'clothing', parentId: null }]
     else if (path === '/v1/admin/orders')
@@ -108,6 +109,94 @@ async function connect(page, identity = user) {
     return route.fulfill({ json: data })
   })
 }
+
+test('authenticated workspace preloads only permission-authorized first-read resources', async ({
+  page,
+}) => {
+  const requests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.startsWith('/v1/admin/')) requests.push(url.pathname)
+  })
+  await connect(page)
+  await page.goto('/dashboard')
+  await expect(
+    page.getByRole('heading', { name: 'Good to see you again.' }),
+  ).toBeVisible()
+  await expect.poll(() => requests.includes('/v1/admin/categories')).toBe(true)
+  await expect.poll(() => requests.includes('/v1/admin/orders')).toBe(true)
+})
+
+test('staff workspace preload skips sections without current permission', async ({
+  page,
+}) => {
+  const requests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.startsWith('/v1/admin/')) requests.push(url.pathname)
+  })
+  await connect(page, {
+    ...user,
+    role: 'STAFF',
+    staffRole: 'SUPPORT',
+    permissions: ['dashboard.view'],
+  })
+  await page.goto('/dashboard')
+  await expect(
+    page.getByRole('heading', { name: 'Good to see you again.' }),
+  ).toBeVisible()
+  await expect.poll(() => requests.includes('/v1/admin/categories')).toBe(true)
+  expect(requests).not.toContain('/v1/admin/orders')
+  expect(requests).not.toContain('/v1/admin/staff')
+})
+
+test('shipping configuration is not speculatively loaded for non-owner staff', async ({
+  page,
+}) => {
+  const requests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.startsWith('/v1/admin/')) requests.push(url.pathname)
+  })
+  await connect(page, {
+    ...user,
+    role: 'STAFF',
+    staffRole: 'SHIPPING',
+    permissions: ['shipping.manage'],
+  })
+  await page.goto('/shipping')
+  await expect(
+    page.getByText(
+      /Only the store owner can read or configure default charges/,
+    ),
+  ).toBeVisible()
+  await page.getByRole('link', { name: 'Shipping & taxes' }).hover()
+  await page.waitForTimeout(150)
+  expect(requests).not.toContain('/v1/admin/checkout/rates')
+  expect(requests).not.toContain('/v1/admin/checkout/zones')
+  expect(requests).not.toContain('/v1/admin/checkout/defaults')
+})
+
+test('product detail data preloads on intent without opening the dialog', async ({
+  page,
+}) => {
+  const requests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.startsWith('/v1/admin/')) requests.push(url.pathname)
+  })
+  await connect(page)
+  await page.goto('/products')
+  await expect(
+    page.getByRole('cell', { name: 'Connected product SKU-001' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Details', exact: true }).hover()
+  await expect
+    .poll(() => requests.includes('/v1/admin/products/' + id))
+    .toBe(true)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
 test('connected dashboard retains cards, chart and exact financial values', async ({
   page,
 }) => {

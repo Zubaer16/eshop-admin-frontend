@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Field, controlClass } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
+import { prefetchAdminInventoryBalance } from '@/lib/admin-cache'
 import { Modal } from '@/components/ui/modal'
 import { PageHeading } from '@/components/layout/page-heading'
 import {
@@ -131,6 +132,15 @@ export function Inventory() {
                       <td className="p-4">
                         <Button
                           variant="secondary"
+                          onMouseEnter={() =>
+                            prefetchAdminInventoryBalance(balance.id)
+                          }
+                          onFocus={() =>
+                            prefetchAdminInventoryBalance(balance.id)
+                          }
+                          onTouchStart={() =>
+                            prefetchAdminInventoryBalance(balance.id)
+                          }
                           onClick={() => setSelected(balance.id)}
                         >
                           Balance details

@@ -27,6 +27,7 @@ import {
   useResource,
 } from './shared'
 import { ProductMedia } from './media'
+import { prefetchAdminProduct } from '@/lib/admin-cache'
 export function Products() {
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(''),
@@ -221,6 +222,9 @@ export function Products() {
                       <td className="flex flex-wrap gap-2 p-4">
                         <Button
                           variant="secondary"
+                          onMouseEnter={() => prefetchAdminProduct(product.id)}
+                          onFocus={() => prefetchAdminProduct(product.id)}
+                          onTouchStart={() => prefetchAdminProduct(product.id)}
                           onClick={() => setDetailId(product.id)}
                         >
                           Details

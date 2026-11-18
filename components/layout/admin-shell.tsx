@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { QuickNavigation } from './quick-navigation'
 import { PushLifecycle } from '@/components/notifications/push-lifecycle'
 import { prefetchAdminRoute } from '@/lib/admin-cache'
+import { AdminWorkspacePreload } from './admin-workspace-preload'
 const links = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
@@ -89,6 +90,7 @@ function Sidebar({ close }: { close?: () => void }) {
               onClick={close}
               onMouseEnter={() => prefetchAdminRoute(href)}
               onFocus={() => prefetchAdminRoute(href)}
+              onTouchStart={() => prefetchAdminRoute(href)}
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
@@ -139,6 +141,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [])
   return (
     <div className="min-h-screen lg:pl-[254px]">
+      <AdminWorkspacePreload />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:font-bold focus:text-primary focus:shadow-xl"

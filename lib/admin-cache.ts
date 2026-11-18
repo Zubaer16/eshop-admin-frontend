@@ -1,8 +1,18 @@
 'use client'
 import { api } from './api/client'
+import { canVisit } from './admin-access'
 import { subscribeAdminMutations } from './admin-cache-events'
-import { createAdminCache } from './admin-cache-core'
+import { createAdminCache, adminOwner } from './admin-cache-core'
 import type { Query } from './admin-cache-core'
+import {
+  adminPrefetchPath,
+  canPrefetchAdminPath,
+  getAdminInventoryPrefetchPlan,
+  getAdminPrefetchPlan,
+  getAdminProductPrefetchPlan,
+  getAdminPromotionCampaignPrefetchPlan,
+  getAdminWorkspacePreloadRoutes,
+} from './admin-prefetch-core'
 export { createAdminCache, adminOwner, adminQueryKey } from './admin-cache-core'
 
 export const adminCache = createAdminCache({
@@ -21,26 +31,54 @@ if (typeof window !== 'undefined') {
   document.addEventListener('visibilitychange', refreshVisibleData)
 }
 
-const prefetchPlan: Record<string, readonly [string, Query?][]> = {
-  '/dashboard': [['/v1/admin/dashboard/overview']],
-  '/products': [
-    ['/v1/admin/products', { page: 1, limit: 20 }],
-    ['/v1/admin/categories'],
-  ],
-  '/categories': [['/v1/admin/categories']],
-  '/inventory': [['/v1/admin/inventory', { page: 1, limit: 20 }]],
-  '/orders': [['/v1/admin/orders', { page: 1, limit: 20 }]],
-  '/promotions': [['/v1/admin/promotions/coupons', { page: 1, limit: 20 }]],
-  '/content': [['/v1/admin/store/banners', { page: 1, limit: 20 }]],
-  '/media': [['/v1/admin/media', { page: 1, limit: 12, status: 'ACTIVE' }]],
-  '/shipping': [
-    ['/v1/admin/checkout/rates'],
-    ['/v1/admin/checkout/zones'],
-    ['/v1/admin/checkout/defaults'],
-  ],
+function runPrefetchPlan(plan: readonly (readonly [string, Query?])[]) {
+  for (const [route, query] of plan) adminCache.prefetch(route, query)
 }
 
 export function prefetchAdminRoute(href: string) {
-  for (const [route, query] of prefetchPlan[href] ?? [])
-    adminCache.prefetch(route, query)
+  const session = api.getSnapshot()
+  if (session.status !== 'authenticated' || !session.user) return
+  const path = adminPrefetchPath(href)
+  if (!path || !canPrefetchAdminPath(path, session.user, canVisit)) return
+  runPrefetchPlan(getAdminPrefetchPlan(path))
+}
+
+export function prefetchAdminWorkspace(expectedOwner?: string) {
+  const session = api.getSnapshot()
+  const owner = adminOwner(session)
+  if (!owner || (expectedOwner && owner !== expectedOwner) || !session.user)
+    return
+  for (const route of getAdminWorkspacePreloadRoutes())
+    if (canPrefetchAdminPath(route, session.user, canVisit))
+      prefetchAdminRoute(route)
+}
+
+export function prefetchAdminProduct(id: string) {
+  const session = api.getSnapshot()
+  if (
+    session.status !== 'authenticated' ||
+    !canPrefetchAdminPath('/products', session.user, canVisit)
+  )
+    return
+  runPrefetchPlan(getAdminProductPrefetchPlan(id))
+}
+
+export function prefetchAdminInventoryBalance(id: string) {
+  const session = api.getSnapshot()
+  if (
+    session.status !== 'authenticated' ||
+    !canPrefetchAdminPath('/inventory', session.user, canVisit)
+  )
+    return
+  runPrefetchPlan(getAdminInventoryPrefetchPlan(id))
+}
+
+export function prefetchAdminPromotionCampaigns() {
+  const session = api.getSnapshot()
+  if (
+    session.status !== 'authenticated' ||
+    !canPrefetchAdminPath('/promotions', session.user, canVisit)
+  )
+    return
+  runPrefetchPlan(getAdminPromotionCampaignPrefetchPlan())
 }
