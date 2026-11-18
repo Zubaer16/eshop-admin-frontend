@@ -2,6 +2,7 @@
 import { api } from './api/client'
 import { canVisit } from './admin-access'
 import { subscribeAdminMutations } from './admin-cache-events'
+import { bindAdminCacheVisibilityRefresh } from './admin-cache-lifecycle'
 import { createAdminCache, adminOwner } from './admin-cache-core'
 import type { Query } from './admin-cache-core'
 import {
@@ -23,12 +24,10 @@ export const adminCache = createAdminCache({
 api.subscribe(adminCache.syncSession)
 subscribeAdminMutations(adminCache.invalidateAll)
 
-if (typeof window !== 'undefined') {
-  const refreshVisibleData = () => {
-    if (document.visibilityState === 'visible') adminCache.invalidateAll()
-  }
-  window.addEventListener('focus', refreshVisibleData)
-  document.addEventListener('visibilitychange', refreshVisibleData)
+if (typeof document !== 'undefined') {
+  // Window focus can fire during ordinary browser interactions. Refresh only
+  // after a real hidden -> visible transition, and only for mounted resources.
+  bindAdminCacheVisibilityRefresh(adminCache, document)
 }
 
 function runPrefetchPlan(plan: readonly (readonly [string, Query?])[]) {

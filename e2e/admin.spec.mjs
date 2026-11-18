@@ -197,6 +197,46 @@ test('product detail data preloads on intent without opening the dialog', async 
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
+test('products do not revalidate on ordinary window focus or scroll events', async ({
+  page,
+}) => {
+  let productListReads = 0
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === '/v1/admin/products') productListReads++
+  })
+  await connect(page)
+  await page.goto('/products')
+  await expect(page.getByTestId('product-row')).toHaveCount(1)
+  await expect.poll(() => productListReads).toBe(1)
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('focus'))
+    window.dispatchEvent(new Event('scroll'))
+  })
+  await page.waitForTimeout(100)
+  expect(productListReads).toBe(1)
+})
+
+test('product hover prefetch is cancelled when the pointer does not dwell', async ({
+  page,
+}) => {
+  const requests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname.startsWith('/v1/admin/')) requests.push(url.pathname)
+  })
+  await connect(page)
+  await page.goto('/products')
+  await expect(page.getByTestId('product-row')).toHaveCount(1)
+  const details = page.getByRole('button', { name: 'Details', exact: true })
+  await details.hover()
+  await page.waitForTimeout(50)
+  await page.mouse.move(8, 8)
+  await page.waitForTimeout(220)
+  expect(requests).not.toContain('/v1/admin/products/' + id)
+})
+
 test('connected dashboard retains cards, chart and exact financial values', async ({
   page,
 }) => {

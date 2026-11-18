@@ -3,7 +3,7 @@ import AdminLink from '@/components/ui/admin-link'
 import Image from 'next/image'
 import { Package2, Search } from 'lucide-react'
 import { Badge, statusKind } from '@/components/ui/badge'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api } from '@/lib/api/client'
 import {
   categoryLabel,
@@ -30,6 +30,7 @@ import {
 import { ProductMedia } from './media'
 import { prefetchAdminProduct } from '@/lib/admin-cache'
 export function Products() {
+  const hoverPrefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(''),
     [draftSearch, setDraftSearch] = useState(''),
@@ -49,6 +50,23 @@ export function Products() {
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false)
   const canWrite = api.can('catalog.manage')
+  function cancelProductHoverPrefetch() {
+    if (hoverPrefetchTimer.current) clearTimeout(hoverPrefetchTimer.current)
+    hoverPrefetchTimer.current = null
+  }
+  function scheduleProductHoverPrefetch(id: string) {
+    cancelProductHoverPrefetch()
+    hoverPrefetchTimer.current = setTimeout(() => {
+      hoverPrefetchTimer.current = null
+      prefetchAdminProduct(id)
+    }, 180)
+  }
+  useEffect(
+    () => () => {
+      if (hoverPrefetchTimer.current) clearTimeout(hoverPrefetchTimer.current)
+    },
+    [],
+  )
   async function archive(product: Product) {
     if (
       !window.confirm(

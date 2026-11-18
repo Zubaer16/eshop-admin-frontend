@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createAdminCache, adminOwner } from '../lib/admin-cache-core.ts'
+import { bindAdminCacheVisibilityRefresh } from '../lib/admin-cache-lifecycle.ts'
 
 const user = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -148,4 +149,137 @@ test('mutation invalidation keeps stale data visible but forces a fresh read', a
   assert.ok(cache.peek('/v1/admin/products'))
   await cache.read('/v1/admin/products')
   assert.equal(calls.length, 2)
+})
+
+test('visibility revalidation refreshes only active resources', async () => {
+  const { cache, calls } = setup()
+  await cache.read('/v1/admin/products', { page: 1, limit: 20 })
+  await cache.read('/v1/admin/categories')
+  const deactivate = cache.activate('/v1/admin/products', {
+    page: 1,
+    limit: 20,
+  })
+  const before = cache.getInvalidationVersion()
+
+  cache.invalidateActive()
+  assert.equal(cache.getInvalidationVersion(), before + 1)
+  await cache.read('/v1/admin/products', { page: 1, limit: 20 })
+  await cache.read('/v1/admin/categories')
+  assert.equal(calls.length, 3)
+
+  deactivate()
+  const after = cache.getInvalidationVersion()
+  cache.invalidateActive()
+  assert.equal(cache.getInvalidationVersion(), after)
+})
+
+test('active resource registrations are reference counted', async () => {
+  const { cache, calls } = setup()
+  await cache.read('/v1/admin/products')
+  const releaseFirst = cache.activate('/v1/admin/products')
+  const releaseSecond = cache.activate('/v1/admin/products')
+
+  releaseFirst()
+  cache.invalidateActive()
+  await cache.read('/v1/admin/products')
+  assert.equal(calls.length, 2)
+
+  releaseSecond()
+  cache.invalidateActive()
+  await cache.read('/v1/admin/products')
+  assert.equal(calls.length, 2)
+})
+
+test('late cleanup from an old session cannot unregister the replacement session resource', async () => {
+  const { cache, calls, setSession } = setup()
+  await cache.read('/v1/admin/products')
+  const releaseOld = cache.activate('/v1/admin/products')
+
+  setSession(
+    session({
+      epoch: 2,
+      user: { id: '22222222-2222-4222-8222-222222222222' },
+    }),
+  )
+  cache.syncSession()
+  const releaseNew = cache.activate('/v1/admin/products')
+  await cache.read('/v1/admin/products')
+  releaseOld()
+
+  const before = cache.getInvalidationVersion()
+  cache.invalidateActive()
+  assert.equal(cache.getInvalidationVersion(), before + 1)
+  await cache.read('/v1/admin/products')
+  assert.equal(calls.length, 3)
+  releaseNew()
+})
+
+test('visibility revalidation does not supersede an active pending request', async () => {
+  let release
+  let requestCount = 0
+  const cache = createAdminCache({
+    session: () => session(),
+    request: () => {
+      requestCount++
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    },
+  })
+  const deactivate = cache.activate('/v1/admin/products')
+  const first = cache.read('/v1/admin/products')
+  await Promise.resolve()
+  cache.invalidateActive()
+  const second = cache.read('/v1/admin/products')
+  assert.equal(requestCount, 1)
+  assert.equal(first, second)
+
+  release({ ok: true })
+  await first
+  deactivate()
+})
+
+test('only a real hidden-to-visible transition refreshes active data', () => {
+  const listeners = new Set()
+  const target = {
+    visibilityState: 'visible',
+    addEventListener(type, listener) {
+      assert.equal(type, 'visibilitychange')
+      listeners.add(listener)
+    },
+    removeEventListener(type, listener) {
+      assert.equal(type, 'visibilitychange')
+      listeners.delete(listener)
+    },
+  }
+  let refreshes = 0
+  const dispose = bindAdminCacheVisibilityRefresh(
+    { invalidateActive: () => refreshes++ },
+    target,
+  )
+  const dispatch = () => listeners.forEach((listener) => listener())
+
+  dispatch()
+  assert.equal(refreshes, 0)
+  target.visibilityState = 'hidden'
+  dispatch()
+  assert.equal(refreshes, 0)
+  target.visibilityState = 'visible'
+  dispatch()
+  assert.equal(refreshes, 1)
+  dispatch()
+  assert.equal(refreshes, 1)
+
+  target.visibilityState = 'hidden'
+  dispatch()
+  target.visibilityState = 'visible'
+  dispatch()
+  assert.equal(refreshes, 2)
+
+  dispose()
+  target.visibilityState = 'hidden'
+  dispatch()
+  target.visibilityState = 'visible'
+  dispatch()
+  assert.equal(refreshes, 2)
 })

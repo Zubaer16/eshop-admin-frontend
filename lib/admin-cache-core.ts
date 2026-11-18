@@ -73,6 +73,7 @@ export function createAdminCache({
   let version = 0
   let invalidationVersion = 0
   const entries = new Map<string, Entry>()
+  const activeResources = new Map<string, { owner: string; count: number }>()
   const listeners = new Set<() => void>()
 
   function publish(invalidated = false) {
@@ -100,6 +101,7 @@ export function createAdminCache({
     if (next !== owner) {
       owner = next
       entries.clear()
+      activeResources.clear()
       publish(true)
     }
     return owner
@@ -187,8 +189,51 @@ export function createAdminCache({
       void read(route, query).catch(() => undefined)
   }
 
+  function activate(route: string, query: Query = {}) {
+    const ticket = ttl(route) ? syncSession() : null
+    if (!ticket) return () => undefined
+    const cacheKey = key(route, query)
+    const current = activeResources.get(cacheKey)
+    activeResources.set(cacheKey, {
+      owner: ticket,
+      count: current?.owner === ticket ? current.count + 1 : 1,
+    })
+    let active = true
+    return () => {
+      if (!active) return
+      active = false
+      const registration = activeResources.get(cacheKey)
+      if (!registration || registration.owner !== ticket) return
+      if (registration.count <= 1) activeResources.delete(cacheKey)
+      else
+        activeResources.set(cacheKey, {
+          owner: ticket,
+          count: registration.count - 1,
+        })
+    }
+  }
+
+  function invalidateActive() {
+    const ticket = syncSession()
+    if (!ticket || !activeResources.size) return
+    // Revalidate only resources currently mounted in this session. Pending reads
+    // are already fresh work and are left alone to avoid duplicate requests.
+    for (const [cacheKey, registration] of activeResources) {
+      if (registration.owner !== ticket) continue
+      const entry = entries.get(cacheKey)
+      if (!entry || entry.pending) continue
+      entries.set(cacheKey, {
+        route: entry.route,
+        value: entry.value,
+        expires: 0,
+      })
+    }
+    publish(true)
+  }
+
   function invalidateAll() {
-    // Keep old values visible while replacing their in-flight requests with fresh reads.
+    // Mutations can affect multiple resources, so preserve the existing broad
+    // invalidation behavior while keeping stale values visible.
     for (const [cacheKey, entry] of entries) {
       entries.set(cacheKey, {
         route: entry.route,
@@ -207,6 +252,8 @@ export function createAdminCache({
     read,
     prefetch,
     isPending,
+    activate,
+    invalidateActive,
     invalidateAll,
     syncSession,
     subscribe(listener: () => void) {

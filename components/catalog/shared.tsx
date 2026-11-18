@@ -52,12 +52,14 @@ export function useResource<T>(
     let active = true
     setError('')
     if (cacheable) {
+      const deactivate = adminCache.activate(route, stableQuery)
       setLocalPending(false)
       void adminCache.read<T>(route, stableQuery).catch((reason) => {
         if (active) setError(message(reason))
       })
       return () => {
         active = false
+        deactivate()
       }
     }
 
