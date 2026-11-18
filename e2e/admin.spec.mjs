@@ -800,3 +800,104 @@ test('cached product data stays visible while a refresh is pending', async ({
     page.getByRole('button', { name: 'Refresh', exact: true }),
   ).toBeEnabled()
 })
+
+test('inventory detail prefetch waits for deliberate pointer dwell', async ({
+  page,
+}) => {
+  const detailRequests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === '/v1/admin/inventory/' + id)
+      detailRequests.push(url.pathname)
+  })
+  await connect(page)
+  await page.route('**/v1/admin/inventory**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    const balance = {
+      id,
+      productId: id,
+      variantId: null,
+      sku: 'SKU-001',
+      title: 'Connected product',
+      onHand: 12,
+      reservedQuantity: 0,
+      availableQuantity: 12,
+      lowStockThreshold: 2,
+      lowStock: false,
+    }
+    if (path === '/v1/admin/inventory')
+      return route.fulfill({ json: pageOf([balance]) })
+    if (path.endsWith('/movements')) return route.fulfill({ json: pageOf([]) })
+    return route.fulfill({ json: balance })
+  })
+  await page.goto('/inventory')
+  const button = page.getByRole('button', { name: 'Balance details' })
+  await expect(button).toBeVisible()
+
+  await button.hover()
+  await page.waitForTimeout(80)
+  await page.mouse.move(8, 8)
+  await page.waitForTimeout(350)
+  expect(detailRequests).toHaveLength(0)
+
+  await button.hover()
+  await expect.poll(() => detailRequests.length).toBeGreaterThan(0)
+})
+
+test('promotion campaign prefetch waits for deliberate pointer dwell', async ({
+  page,
+}) => {
+  const campaignRequests = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === '/v1/admin/promotions/campaigns')
+      campaignRequests.push(url.pathname)
+  })
+  await connect(page)
+  await page.route('**/v1/admin/promotions/**', (route) =>
+    route.fulfill({ json: pageOf([]) }),
+  )
+  await page.goto('/promotions')
+  const button = page.getByRole('button', { name: 'Campaigns', exact: true })
+  await expect(button).toBeVisible()
+
+  await button.hover()
+  await page.waitForTimeout(80)
+  await page.mouse.move(8, 8)
+  await page.waitForTimeout(350)
+  expect(campaignRequests).toHaveLength(0)
+
+  await button.hover()
+  await expect.poll(() => campaignRequests.length).toBeGreaterThan(0)
+})
+
+test('media library images use lazy async low-priority decoding and stable dimensions', async ({
+  page,
+}) => {
+  await connect(page)
+  await page.route('**/v1/admin/media*', (route) =>
+    route.fulfill({
+      json: pageOf([
+        {
+          id,
+          status: 'ACTIVE',
+          url: 'https://cdn.example.test/asset.webp',
+          mimeType: 'image/webp',
+          bytes: 2048,
+          width: 1200,
+          height: 800,
+        },
+      ]),
+    }),
+  )
+  await page.goto('/media')
+  const image = page.getByRole('img', { name: 'Media library image' })
+  await expect(image).toBeVisible()
+  await expect(image).toHaveAttribute('loading', 'lazy')
+  await expect(image).toHaveAttribute('decoding', 'async')
+  await expect(image).toHaveAttribute('fetchpriority', 'low')
+  await expect(image).toHaveAttribute('width', '1200')
+  await expect(image).toHaveAttribute('height', '800')
+  const card = page.getByTestId('media-asset-' + id)
+  await expect(card).toHaveCSS('content-visibility', 'auto')
+})

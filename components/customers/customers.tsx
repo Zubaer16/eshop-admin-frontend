@@ -215,7 +215,7 @@ function CustomerDetail({ id }: { id: string }) {
       {customer.recentOrders.map((order) => (
         <div
           key={order.id}
-          className="rounded-xl border border-line p-3 text-sm"
+          className="admin-offscreen-card rounded-xl border border-line p-3 text-sm"
         >
           <p className="break-all font-semibold">{order.id}</p>
           <p className="mt-2">

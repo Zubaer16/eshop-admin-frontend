@@ -1,6 +1,6 @@
 'use client'
 import { PageHeading } from '@/components/layout/page-heading'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '@/lib/api/client'
 import type { Page } from '@/lib/api/catalog'
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/components/catalog/shared'
 import { Button } from '@/components/ui/button'
 import { prefetchAdminPromotionCampaigns } from '@/lib/admin-cache'
+import { createIntentPrefetch } from '@/lib/intent-prefetch'
 import { Field, Check, MutationForm, fieldClass, text, number } from './forms'
 type Campaign = {
   id: string
@@ -43,6 +44,11 @@ type Coupon = {
 const nullable = (data: FormData, key: string) => text(data, key) || null
 export function Promotions() {
   const [tab, setTab] = useState<'coupons' | 'campaigns'>('coupons')
+  const campaignPrefetchIntent = useMemo(() => createIntentPrefetch(300), [])
+  useEffect(
+    () => () => campaignPrefetchIntent.cancelAll(),
+    [campaignPrefetchIntent],
+  )
   return (
     <section className="space-y-6">
       <PageHeading title="Promotions" />
@@ -60,10 +66,29 @@ export function Promotions() {
         </Button>
         <Button
           variant={tab === 'campaigns' ? 'primary' : 'secondary'}
-          onMouseEnter={prefetchAdminPromotionCampaigns}
-          onFocus={prefetchAdminPromotionCampaigns}
-          onTouchStart={prefetchAdminPromotionCampaigns}
-          onClick={() => setTab('campaigns')}
+          onMouseEnter={() =>
+            campaignPrefetchIntent.schedule(
+              'campaigns',
+              prefetchAdminPromotionCampaigns,
+            )
+          }
+          onMouseLeave={() => campaignPrefetchIntent.cancel('campaigns')}
+          onFocus={() =>
+            campaignPrefetchIntent.run(
+              'campaigns',
+              prefetchAdminPromotionCampaigns,
+            )
+          }
+          onTouchStart={() =>
+            campaignPrefetchIntent.run(
+              'campaigns',
+              prefetchAdminPromotionCampaigns,
+            )
+          }
+          onClick={() => {
+            campaignPrefetchIntent.cancel('campaigns')
+            setTab('campaigns')
+          }}
         >
           Campaigns
         </Button>
@@ -143,7 +168,7 @@ function PromotionList({ kind }: { kind: 'coupons' | 'campaigns' }) {
             {list.data.items.map((row) => (
               <article
                 key={row.id}
-                className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+                className="admin-offscreen-card space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
               >
                 <h2 className="font-bold">
                   {'code' in row ? row.code : row.title} · revision{' '}

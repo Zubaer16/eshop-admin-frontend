@@ -1,6 +1,6 @@
 'use client'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '@/lib/api/client'
 import {
   isUuid,
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Field, controlClass } from '@/components/ui/field'
 import { Panel } from '@/components/ui/panel'
 import { prefetchAdminInventoryBalance } from '@/lib/admin-cache'
+import { createIntentPrefetch } from '@/lib/intent-prefetch'
 import { Modal } from '@/components/ui/modal'
 import { PageHeading } from '@/components/layout/page-heading'
 import {
@@ -30,6 +31,11 @@ type Adjustment = {
 export function Inventory() {
   const params = useSearchParams(),
     initialProduct = params.get('productId') || ''
+  const balancePrefetchIntent = useMemo(() => createIntentPrefetch(300), [])
+  useEffect(
+    () => () => balancePrefetchIntent.cancelAll(),
+    [balancePrefetchIntent],
+  )
   const [page, setPage] = useState(1),
     [low, setLow] = useState(''),
     [productId, setProductId] = useState(
@@ -133,13 +139,22 @@ export function Inventory() {
                         <Button
                           variant="secondary"
                           onMouseEnter={() =>
-                            prefetchAdminInventoryBalance(balance.id)
+                            balancePrefetchIntent.schedule(balance.id, () =>
+                              prefetchAdminInventoryBalance(balance.id),
+                            )
+                          }
+                          onMouseLeave={() =>
+                            balancePrefetchIntent.cancel(balance.id)
                           }
                           onFocus={() =>
-                            prefetchAdminInventoryBalance(balance.id)
+                            balancePrefetchIntent.run(balance.id, () =>
+                              prefetchAdminInventoryBalance(balance.id),
+                            )
                           }
                           onTouchStart={() =>
-                            prefetchAdminInventoryBalance(balance.id)
+                            balancePrefetchIntent.run(balance.id, () =>
+                              prefetchAdminInventoryBalance(balance.id),
+                            )
                           }
                           onClick={() => setSelected(balance.id)}
                         >

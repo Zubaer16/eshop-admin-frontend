@@ -24,19 +24,32 @@ export function MediaImage({
   url,
   alt,
   className = '',
+  width,
+  height,
 }: {
   url: string | null | undefined
   alt: string
   className?: string
+  width?: number
+  height?: number
 }) {
   const [failed, setFailed] = useState(false),
-    src = imageUrl(url)
+    src = imageUrl(url),
+    imageWidth =
+      Number.isSafeInteger(width) && Number(width) > 0 ? Number(width) : 1,
+    imageHeight =
+      Number.isSafeInteger(height) && Number(height) > 0 ? Number(height) : 1
   return src && !failed ? (
     <img
       src={src}
       alt={alt}
+      width={imageWidth}
+      height={imageHeight}
       className={className + ' object-contain'}
       loading="lazy"
+      decoding="async"
+      fetchPriority="low"
+      draggable={false}
       onError={() => setFailed(true)}
     />
   ) : (
@@ -334,12 +347,14 @@ export function MediaLibrary({
               <div
                 key={asset.id}
                 data-testid={'media-asset-' + asset.id}
-                className="rounded-xl border border-line p-3"
+                className="admin-offscreen-card admin-offscreen-media-card rounded-xl border border-line p-3"
               >
                 <MediaImage
                   key={asset.url}
                   url={asset.url}
                   alt="Media library image"
+                  width={asset.width}
+                  height={asset.height}
                   className="h-28 w-full rounded-lg"
                 />
                 <p className="mt-2 break-all text-xs font-semibold">
@@ -428,6 +443,8 @@ export function ProductMedia({
         mediaId: image.id,
         altText: image.alt || '',
         url: image.url,
+        width: image.width,
+        height: image.height,
       })),
     ),
     [busy, setBusy] = useState(false),
@@ -483,6 +500,8 @@ export function ProductMedia({
               key={image.url}
               url={image.url}
               alt={image.altText}
+              width={image.width}
+              height={image.height}
               className="h-16 w-20 rounded-lg"
             />
             <input
@@ -552,7 +571,13 @@ export function ProductMedia({
             ) {
               setItems((previous) => [
                 ...previous,
-                { mediaId: asset.id, altText: '', url: asset.url || '' },
+                {
+                  mediaId: asset.id,
+                  altText: '',
+                  url: asset.url || '',
+                  width: asset.width,
+                  height: asset.height,
+                },
               ])
               setDirty(true)
             }

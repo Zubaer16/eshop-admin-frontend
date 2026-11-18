@@ -180,10 +180,9 @@ input[type='number'] {
 }
 .product-filter-form {
   display: grid;
-  grid-template-columns: minmax(250px, 1.55fr) minmax(170px, 1fr) minmax(
-      150px,
-      0.9fr
-    ) auto;
+  grid-template-columns:
+    minmax(250px, 1.55fr) minmax(170px, 1fr) minmax(150px, 0.9fr)
+    auto;
   align-items: center;
   gap: 10px;
 }
@@ -502,4 +501,17 @@ input[type='number'] {
   .product-refresh-dot {
     animation: none !important;
   }
+}
+
+/* Skip painting far-off admin cards until they approach the viewport.
+   Intrinsic sizes reserve space so scrolling does not collapse the list. */
+.admin-offscreen-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 12rem;
+}
+.admin-offscreen-media-card {
+  contain-intrinsic-size: auto 17rem;
+}
+.admin-offscreen-order-line {
+  contain-intrinsic-size: auto 6rem;
 }

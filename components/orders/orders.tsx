@@ -272,7 +272,7 @@ function OrderOperations({ id }: { id: string }) {
             {data.order.deliveryKind || 'Flat delivery'} · Coupon{' '}
             {data.order.couponCode || 'None'}
           </p>
-          <div className="rounded-xl border p-4 text-sm">
+          <div className="admin-offscreen-card admin-offscreen-order-line rounded-xl border p-4 text-sm">
             <h3 className="font-bold">Delivery address snapshot</h3>
             <p>
               {data.order.shippingAddress.recipientName} ·{' '}
@@ -388,7 +388,10 @@ function OrderOperations({ id }: { id: string }) {
             imply restocking.
           </p>
           {data.returns.map((row) => (
-            <article key={row.id} className="space-y-3 rounded-xl border p-4">
+            <article
+              key={row.id}
+              className="admin-offscreen-card space-y-3 rounded-xl border p-4"
+            >
               <h4 className="break-all font-bold">Return {row.id}</h4>
               <p className="text-sm">
                 {data.order.lines.find((line) => line.id === row.orderLineId)
@@ -493,7 +496,10 @@ function OrderOperations({ id }: { id: string }) {
           )}
           <h3 className="text-xl font-bold">Same-SKU replacement dispatches</h3>
           {data.replacements.map((row) => (
-            <article key={row.id} className="space-y-3 rounded-xl border p-4">
+            <article
+              key={row.id}
+              className="admin-offscreen-card space-y-3 rounded-xl border p-4"
+            >
               <h4 className="break-all font-bold">Replacement {row.id}</h4>
               <p className="text-sm">
                 Return {row.returnId} · {row.quantity} units · {row.skuSnapshot}{' '}
@@ -561,7 +567,10 @@ function OrderOperations({ id }: { id: string }) {
           <h3 className="text-xl font-bold">Recovery timeline</h3>
           <ol className="space-y-2">
             {data.tracking.events.map((event) => (
-              <li key={event.id} className="rounded-xl border p-3 text-sm">
+              <li
+                key={event.id}
+                className="admin-offscreen-card rounded-xl border p-3 text-sm"
+              >
                 {event.type} · {event.status} · {event.occurredAt}
               </li>
             ))}
@@ -578,7 +587,7 @@ function OrderOperations({ id }: { id: string }) {
               {data.refunds.map((row) => (
                 <article
                   key={row.id}
-                  className="space-y-2 rounded-xl border p-4 text-sm"
+                  className="admin-offscreen-card space-y-2 rounded-xl border p-4 text-sm"
                 >
                   <p>
                     {row.id} · {money(row.amountMinor, row.currency)} ·{' '}
