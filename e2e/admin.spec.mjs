@@ -554,6 +554,78 @@ test('orders show compact references, independent statuses and backend page-size
     .toBe(true)
 })
 
+test('orders use numbered server pagination and omit the current-page summary card', async ({
+  page,
+}) => {
+  const requested = []
+  await connect(page)
+  await page.route('**/v1/admin/orders**', (route) => {
+    const url = new URL(route.request().url())
+    const currentPage = Number(url.searchParams.get('page') || 1)
+    const limit = Number(url.searchParams.get('limit') || 20)
+    requested.push({ page: currentPage, limit })
+    return route.fulfill({
+      json: {
+        ...pageOf([
+          {
+            id,
+            status: 'PAID',
+            currency: 'USD',
+            totalMinor: 2599,
+            createdAt: '2026-11-13T00:00:00Z',
+            fulfillment: null,
+          },
+        ]),
+        page: currentPage,
+        limit,
+        total: 151,
+        pages: Math.ceil(151 / limit),
+      },
+    })
+  })
+
+  await page.goto('/orders')
+  const pagination = page.getByRole('navigation', {
+    name: 'Orders pagination',
+  })
+  await expect(pagination).toBeVisible()
+  await expect(page.getByText('Showing 1–20 of 151 orders')).toBeVisible()
+  await expect(page.getByText('Current page', { exact: true })).toHaveCount(0)
+  await expect(
+    pagination.getByRole('button', { name: 'Page 1' }),
+  ).toHaveAttribute('aria-current', 'page')
+  await expect(pagination.getByRole('button', { name: 'Page 5' })).toBeVisible()
+  await expect(pagination.getByRole('button', { name: 'Page 8' })).toBeVisible()
+  await expect(pagination.getByText('…', { exact: true })).toHaveCount(1)
+
+  await pagination.getByRole('button', { name: 'Page 5' }).click()
+  await expect.poll(() => requested.at(-1)?.page).toBe(5)
+  await expect(
+    pagination.getByRole('button', { name: 'Page 5' }),
+  ).toHaveAttribute('aria-current', 'page')
+  await expect(pagination.getByText('…', { exact: true })).toHaveCount(2)
+  await expect(page.getByText('Showing 81–100 of 151 orders')).toBeVisible()
+
+  await pagination.getByRole('button', { name: 'Page 8' }).click()
+  await expect.poll(() => requested.at(-1)?.page).toBe(8)
+  await expect(
+    pagination.getByRole('button', { name: 'Page 8' }),
+  ).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByText('Showing 141–151 of 151 orders')).toBeVisible()
+  await expect(
+    pagination.getByRole('button', { name: 'Next page' }),
+  ).toBeDisabled()
+  await expect(
+    pagination.getByRole('button', { name: 'Previous page' }),
+  ).toBeEnabled()
+
+  await pagination.getByRole('button', { name: 'Previous page' }).click()
+  await expect.poll(() => requested.at(-1)?.page).toBe(7)
+  await expect(
+    pagination.getByRole('button', { name: 'Page 7' }),
+  ).toHaveAttribute('aria-current', 'page')
+})
+
 test('opening an order uses a dedicated details workspace and returns to the list', async ({
   page,
 }) => {

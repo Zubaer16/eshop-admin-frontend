@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { ArrowLeft, Check, Copy } from 'lucide-react'
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Copy } from 'lucide-react'
 import { Badge, statusKind } from '@/components/ui/badge'
 import { displayDate } from '@/lib/presentation'
 import { PageHeading } from '@/components/layout/page-heading'
@@ -10,7 +10,6 @@ import {
   useResource,
   ResourceState,
   ErrorMessage,
-  Pagination,
 } from '@/components/catalog/shared'
 import { Button } from '@/components/ui/button'
 import { Field, fieldClass, text } from '@/components/commerce/forms'
@@ -22,6 +21,7 @@ import {
   type OrderPage,
 } from '@/lib/api/orders'
 import { useOrderResource } from './resource'
+import { getOrderPaginationItems } from '@/lib/order-pagination'
 
 export function Orders() {
   const [page, setPage] = useState(1),
@@ -139,7 +139,7 @@ export function Orders() {
 
       {list.data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-[.12em] text-muted">
                 Total orders
@@ -148,18 +148,6 @@ export function Orders() {
                 {list.data.total.toLocaleString()}
               </p>
               <p className="mt-1 text-xs text-muted">Across all result pages</p>
-            </article>
-            <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-[.12em] text-muted">
-                Current page
-              </p>
-              <p className="mt-2 text-2xl font-black tabular-nums text-ink">
-                {list.data.page}{' '}
-                <span className="text-base font-semibold text-muted">
-                  / {Math.max(1, list.data.pages)}
-                </span>
-              </p>
-              <p className="mt-1 text-xs text-muted">Server-side pagination</p>
             </article>
             <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-[.12em] text-muted">
@@ -372,9 +360,7 @@ export function Orders() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-line bg-white shadow-sm">
-            <Pagination data={list.data} change={setPage} />
-          </div>
+          <OrdersPagination data={list.data} change={setPage} />
         </>
       ) : (
         <ResourceState error={list.error} retry={list.reload} />
@@ -382,6 +368,90 @@ export function Orders() {
     </section>
   )
 }
+
+function OrdersPagination({
+  data,
+  change,
+}: {
+  data: OrderPage
+  change: (page: number) => void
+}) {
+  const totalPages = Math.max(1, data.pages)
+  const start = data.total === 0 ? 0 : (data.page - 1) * data.limit + 1
+  const end = Math.min(data.page * data.limit, data.total)
+  const items = getOrderPaginationItems(data.page, totalPages)
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-muted" aria-live="polite">
+        Showing{' '}
+        <span className="font-semibold tabular-nums text-ink">
+          {start}–{end}
+        </span>{' '}
+        of{' '}
+        <span className="font-semibold tabular-nums text-ink">
+          {data.total.toLocaleString()}
+        </span>{' '}
+        orders
+      </p>
+      {totalPages > 1 && (
+        <nav
+          aria-label="Orders pagination"
+          className="flex flex-wrap items-center justify-start gap-1 sm:justify-end"
+        >
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9 w-9 px-0"
+            aria-label="Previous page"
+            disabled={data.page <= 1}
+            onClick={() => change(data.page - 1)}
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </Button>
+          {items.map((item) =>
+            typeof item === 'number' ? (
+              <Button
+                key={item}
+                type="button"
+                variant={item === data.page ? 'primary' : 'ghost'}
+                size="sm"
+                className="h-9 min-w-9 px-2 tabular-nums disabled:cursor-default disabled:opacity-100"
+                aria-label={`Page ${item}`}
+                aria-current={item === data.page ? 'page' : undefined}
+                disabled={item === data.page}
+                onClick={() => change(item)}
+              >
+                {item}
+              </Button>
+            ) : (
+              <span
+                key={item}
+                aria-hidden="true"
+                className="flex h-9 min-w-7 items-center justify-center px-1 text-sm text-muted"
+              >
+                …
+              </span>
+            ),
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9 w-9 px-0"
+            aria-label="Next page"
+            disabled={data.page >= totalPages}
+            onClick={() => change(data.page + 1)}
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </Button>
+        </nav>
+      )}
+    </div>
+  )
+}
+
 function ActionForm({
   title,
   disabled,
