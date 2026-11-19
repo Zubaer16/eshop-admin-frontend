@@ -509,14 +509,151 @@ test('variant products distinguish variant-managed stock from variant count', as
   await expect(row.getByRole('cell', { name: '2', exact: true })).toBeVisible()
 })
 
-test('orders retain connected payment and shipment table', async ({ page }) => {
+test('orders show compact references, independent statuses and backend page-size controls', async ({
+  page,
+}) => {
+  const requested = []
   await connect(page)
+  await page.route('**/v1/admin/orders**', (route) => {
+    const url = new URL(route.request().url())
+    const currentPage = Number(url.searchParams.get('page') || 1)
+    const limit = Number(url.searchParams.get('limit') || 20)
+    requested.push({ page: currentPage, limit })
+    return route.fulfill({
+      json: {
+        ...pageOf([
+          {
+            id,
+            status: 'PAID',
+            currency: 'USD',
+            totalMinor: 2599,
+            createdAt: '2026-11-13T00:00:00Z',
+            fulfillment: null,
+          },
+        ]),
+        page: currentPage,
+        limit,
+        total: 42,
+        pages: Math.ceil(42 / limit),
+      },
+    })
+  })
   await page.goto('/orders')
   await expect(page.getByRole('region', { name: 'Orders table' })).toBeVisible()
   await expect(
     page.getByRole('cell', { name: 'PAID', exact: true }),
   ).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Not started' })).toBeVisible()
+  await expect(page.getByText('42', { exact: true }).first()).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Copy full order UUID ' + id }),
+  ).toBeVisible()
+  await page.getByLabel('Orders per page').selectOption('50')
+  await expect
+    .poll(() => requested.some((item) => item.limit === 50 && item.page === 1))
+    .toBe(true)
+})
+
+test('opening an order uses a dedicated details workspace and returns to the list', async ({
+  page,
+}) => {
+  await connect(page)
+  const lineId = '00000000-0000-4000-8000-000000000002'
+  await page.route(`**/v1/admin/orders/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        id,
+        status: 'PAID',
+        currency: 'USD',
+        totalMinor: 2599,
+        discountMinor: 0,
+        paidAt: '2026-11-13T01:00:00Z',
+        createdAt: '2026-11-13T00:00:00Z',
+        fulfillment: null,
+        countryCode: 'US',
+        subtotalMinor: 2499,
+        shippingMinor: 100,
+        taxMinor: 0,
+        couponCode: null,
+        deliveryKind: 'standard',
+        paymentDeadlineAt: '2026-11-14T00:00:00Z',
+        shippingAddress: {
+          recipientName: 'Alex Example',
+          phone: '+12025550123',
+          addressLine1: '1 Example Street',
+          addressLine2: null,
+          city: 'New York',
+          region: 'NY',
+          postalCode: '10001',
+          countryCode: 'US',
+        },
+        lines: [
+          {
+            id: lineId,
+            title: 'Connected product',
+            sku: 'SKU-001',
+            quantity: 1,
+            unitPriceMinor: 2499,
+            lineTotalMinor: 2499,
+            discountMinor: 0,
+            netLineTotalMinor: 2499,
+            optionsSnapshotJson: '{}',
+          },
+        ],
+      },
+    }),
+  )
+  await page.route(`**/v1/admin/orders/${id}/returns`, (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.route(`**/v1/admin/orders/${id}/replacements`, (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.route(`**/v1/admin/orders/${id}/tracking`, (route) =>
+    route.fulfill({
+      json: {
+        orderId: id,
+        orderStatus: 'PAID',
+        originalShipment: null,
+        returns: [],
+        replacements: [],
+        events: [],
+      },
+    }),
+  )
+  await page.route(`**/v1/admin/payments/orders/${id}/refunds`, (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.goto('/orders')
+  await page.getByLabel('Exact order UUID').fill(id)
+  await page.getByRole('button', { name: 'Open order' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Order details', level: 1 }),
+  ).toBeVisible()
+  await expect(page.getByText('#00000000', { exact: true })).toBeVisible()
+  await expect(page.getByText('Connected product')).toBeVisible()
+  await page.getByRole('button', { name: 'Back to orders' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Orders', level: 1 }),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/orders$/)
+})
+
+test('orders use responsive cards on narrow screens without page overflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await connect(page)
+  await page.goto('/orders')
+  await expect(page.getByTestId('order-card').first()).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'View details' }).first(),
+  ).toBeVisible()
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true)
 })
 for (const width of [320, 390, 768, 1440])
   test(`dashboard and catalog contain scrolling at ${width}px`, async ({
@@ -530,6 +667,8 @@ for (const width of [320, 390, 768, 1440])
         await expect(
           page.getByRole('img', { name: 'Daily net collections in USD' }),
         ).toBeVisible()
+      else if (path === '/orders' && width < 768)
+        await expect(page.getByTestId('order-card').first()).toBeVisible()
       else await expect(page.locator('.admin-table').first()).toBeVisible()
       if (path === '/products') {
         const productRegion = page.getByRole('region', {

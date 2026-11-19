@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeft, Check, Copy } from 'lucide-react'
 import { Badge, statusKind } from '@/components/ui/badge'
 import { displayDate } from '@/lib/presentation'
 import { PageHeading } from '@/components/layout/page-heading'
@@ -24,10 +25,13 @@ import { useOrderResource } from './resource'
 
 export function Orders() {
   const [page, setPage] = useState(1),
+    [limit, setLimit] = useState(20),
     [draft, setDraft] = useState(''),
     [id, setId] = useState(''),
-    [error, setError] = useState('')
-  const list = useResource<OrderPage>('/v1/admin/orders', { page, limit: 20 })
+    [error, setError] = useState(''),
+    [copiedId, setCopiedId] = useState('')
+  const list = useResource<OrderPage>('/v1/admin/orders', { page, limit })
+
   useEffect(() => {
     const value = new URLSearchParams(window.location.search).get('order')
     if (value && isOrderId(value)) {
@@ -35,6 +39,7 @@ export function Orders() {
       setId(value)
     }
   }, [])
+
   function open(value: string) {
     if (!isOrderId(value)) {
       setError('Enter the exact order UUID.')
@@ -45,30 +50,81 @@ export function Orders() {
     setDraft(value)
     window.history.replaceState(null, '', '/orders?order=' + value)
   }
+
+  function closeOrder() {
+    setId('')
+    setDraft('')
+    setError('')
+    window.history.replaceState(null, '', '/orders')
+  }
+
+  async function copyOrderId(value: string) {
+    try {
+      if (!navigator.clipboard?.writeText)
+        throw new Error('Clipboard access is unavailable.')
+      await navigator.clipboard.writeText(value)
+      setCopiedId(value)
+      window.setTimeout(() => {
+        setCopiedId((current) => (current === value ? '' : current))
+      }, 1600)
+    } catch {
+      setError(
+        'Could not copy the order UUID. You can select its full reference from the order details.',
+      )
+    }
+  }
+
+  if (id) {
+    return (
+      <section className="space-y-6">
+        <PageHeading
+          eyebrow="ORDER MANAGEMENT"
+          title="Order details"
+          description="Review the order snapshot and manage its permitted fulfillment, return and recovery actions."
+          action={
+            <Button variant="secondary" onClick={closeOrder}>
+              <ArrowLeft size={16} aria-hidden="true" />
+              Back to orders
+            </Button>
+          }
+        />
+        <OrderOperations key={id} id={id} />
+      </section>
+    )
+  }
+
   return (
     <section className="space-y-6">
       <PageHeading
         eyebrow="ORDER MANAGEMENT"
         title="Orders"
-        description="Track orders, payments and shipments. Find a specific order using its reference."
+        description="Manage orders, payments and shipments from one place."
       />
+
       <form
         onSubmit={(e) => {
           e.preventDefault()
           open(draft.trim())
         }}
-        className="flex flex-wrap items-end gap-3"
+        className="grid gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end"
       >
-        <label className="grow text-sm font-bold">
+        <label className="min-w-0 text-sm font-bold">
           Exact order UUID
           <input
-            className={fieldClass}
+            className={fieldClass + ' mt-2'}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            placeholder="Paste the complete order UUID"
+            aria-label="Exact order UUID"
+            autoComplete="off"
+            spellCheck={false}
             required
           />
+          <span className="mt-1 block text-xs font-normal text-muted">
+            Open a specific order using its canonical reference.
+          </span>
         </label>
-        <Button>Open order</Button>
+        <Button type="submit">Open order</Button>
         <Button
           type="button"
           variant="secondary"
@@ -76,40 +132,129 @@ export function Orders() {
           pendingLabel="Refreshing…"
           onClick={list.reload}
         >
-          Refresh order list
+          Refresh list
         </Button>
       </form>
       <ErrorMessage text={error} />
-      {id && <OrderOperations key={id} id={id} />}
+
       {list.data ? (
         <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[.12em] text-muted">
+                Total orders
+              </p>
+              <p className="mt-2 text-2xl font-black tabular-nums text-ink">
+                {list.data.total.toLocaleString()}
+              </p>
+              <p className="mt-1 text-xs text-muted">Across all result pages</p>
+            </article>
+            <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[.12em] text-muted">
+                Current page
+              </p>
+              <p className="mt-2 text-2xl font-black tabular-nums text-ink">
+                {list.data.page}{' '}
+                <span className="text-base font-semibold text-muted">
+                  / {Math.max(1, list.data.pages)}
+                </span>
+              </p>
+              <p className="mt-1 text-xs text-muted">Server-side pagination</p>
+            </article>
+            <article className="rounded-2xl border border-line bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[.12em] text-muted">
+                Results on this page
+              </p>
+              <p className="mt-2 text-2xl font-black tabular-nums text-ink">
+                {list.data.items.length}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Maximum {list.data.limit} per page
+              </p>
+            </article>
+          </div>
+
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-tight text-ink">
+                All orders
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                Payment and shipment states are shown independently.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+              Rows per page
+              <select
+                aria-label="Orders per page"
+                className="h-10 rounded-xl border border-line bg-white px-3 text-sm font-semibold text-ink"
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value))
+                  setPage(1)
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          </div>
+
           <div
-            className="table-scroll rounded-2xl border border-line bg-white"
+            className="table-scroll hidden rounded-2xl border border-line bg-white shadow-sm md:block"
             tabIndex={0}
             role="region"
             aria-label="Orders table"
           >
-            <table className="admin-table">
+            <table className="admin-table min-w-[850px]">
               <thead>
                 <tr>
-                  <th>Order</th>
+                  <th>Order reference</th>
                   <th>Placed</th>
                   <th>Amount</th>
                   <th>Payment</th>
                   <th>Shipment</th>
-                  <th>Actions</th>
+                  <th className="text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {list.data.items.map((row) => (
                   <tr key={row.id}>
                     <td>
-                      <span className="block max-w-48 truncate" title={row.id}>
-                        {row.id}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="font-bold tracking-wide text-ink"
+                          title={row.id}
+                        >
+                          #{row.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          aria-label={`Copy full order UUID ${row.id}`}
+                          title="Copy full order UUID"
+                          onClick={() => void copyOrderId(row.id)}
+                        >
+                          {copiedId === row.id ? (
+                            <Check size={15} aria-hidden="true" />
+                          ) : (
+                            <Copy size={15} aria-hidden="true" />
+                          )}
+                        </Button>
+                      </div>
+                      <span className="block text-[11px] font-normal text-muted">
+                        Order reference
                       </span>
                     </td>
-                    <td>{displayDate(row.createdAt)}</td>
-                    <td>{money(row.totalMinor, row.currency)}</td>
+                    <td className="whitespace-nowrap">
+                      {displayDate(row.createdAt)}
+                    </td>
+                    <td className="whitespace-nowrap font-bold tabular-nums">
+                      {money(row.totalMinor, row.currency)}
+                    </td>
                     <td>
                       <Badge kind={statusKind(row.status)}>
                         {row.status.replaceAll('_', ' ')}
@@ -120,9 +265,13 @@ export function Orders() {
                         {row.fulfillment?.status || 'Not started'}
                       </Badge>
                     </td>
-                    <td>
-                      <Button variant="secondary" onClick={() => open(row.id)}>
-                        View order {row.id}
+                    <td className="text-right">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => open(row.id)}
+                      >
+                        View details
                       </Button>
                     </td>
                   </tr>
@@ -130,10 +279,102 @@ export function Orders() {
               </tbody>
             </table>
             {!list.data.items.length && (
-              <p className="p-8 text-muted">No orders.</p>
+              <div className="p-10 text-center">
+                <p className="font-bold text-ink">No orders found</p>
+                <p className="mt-1 text-sm text-muted">
+                  Orders will appear here when they are available.
+                </p>
+              </div>
             )}
           </div>
-          <Pagination data={list.data} change={setPage} />
+
+          <div className="space-y-3 md:hidden" aria-label="Orders list">
+            {list.data.items.map((row) => (
+              <article
+                key={row.id}
+                data-testid="order-card"
+                className="admin-offscreen-card space-y-3 rounded-2xl border border-line bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-[.12em] text-muted">
+                      Order reference
+                    </p>
+                    <p
+                      className="mt-1 truncate font-extrabold text-ink"
+                      title={row.id}
+                    >
+                      #{row.id.slice(0, 8).toUpperCase()}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    aria-label={`Copy full order UUID ${row.id}`}
+                    title="Copy full order UUID"
+                    onClick={() => void copyOrderId(row.id)}
+                  >
+                    {copiedId === row.id ? (
+                      <Check size={15} aria-hidden="true" />
+                    ) : (
+                      <Copy size={15} aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 border-y border-line py-3">
+                  <div>
+                    <p className="text-xs text-muted">Placed</p>
+                    <p className="mt-1 text-sm font-semibold text-ink">
+                      {displayDate(row.createdAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">Amount</p>
+                    <p className="mt-1 text-sm font-bold tabular-nums text-ink">
+                      {money(row.totalMinor, row.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">Payment</p>
+                    <div className="mt-1">
+                      <Badge kind={statusKind(row.status)}>
+                        {row.status.replaceAll('_', ' ')}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">Shipment</p>
+                    <div className="mt-1">
+                      <Badge kind={statusKind(row.fulfillment?.status || '')}>
+                        {row.fulfillment?.status || 'Not started'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => open(row.id)}
+                >
+                  View details
+                </Button>
+              </article>
+            ))}
+            {!list.data.items.length && (
+              <div className="rounded-2xl border border-line bg-white p-8 text-center">
+                <p className="font-bold text-ink">No orders found</p>
+                <p className="mt-1 text-sm text-muted">
+                  Orders will appear here when they are available.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-line bg-white shadow-sm">
+            <Pagination data={list.data} change={setPage} />
+          </div>
         </>
       ) : (
         <ResourceState error={list.error} retry={list.reload} />
@@ -207,8 +448,28 @@ function OrderOperations({ id }: { id: string }) {
     if (window.confirm(prompt)) void action(suffix)
   }
   return (
-    <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5">
-      <h2 className="break-all text-2xl font-black">Order {id}</h2>
+    <section className="space-y-5 rounded-2xl border border-line bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-[.16em] text-primary">
+            ORDER REFERENCE
+          </p>
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-ink">
+            #{id.slice(0, 8).toUpperCase()}
+          </h2>
+          <p className="mt-1 break-all text-xs text-muted">{id}</p>
+        </div>
+        {data && (
+          <div className="flex flex-wrap gap-2">
+            <Badge kind={statusKind(data.order.status)}>
+              {data.order.status.replaceAll('_', ' ')}
+            </Badge>
+            <Badge kind={statusKind(data.order.fulfillment?.status || '')}>
+              {data.order.fulfillment?.status || 'Not started'}
+            </Badge>
+          </div>
+        )}
+      </div>
       <ErrorMessage text={resource.error} />
       <Button
         variant="secondary"
