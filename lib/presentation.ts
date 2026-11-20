@@ -56,3 +56,17 @@ export function displayDate(value: string) {
         timeZone: 'UTC',
       }).format(date)
 }
+export function displayDateTime(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short',
+      }).format(date)
+}

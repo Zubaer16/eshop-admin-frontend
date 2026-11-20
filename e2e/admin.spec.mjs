@@ -900,6 +900,88 @@ test('report table displays exact currency and retains complete record details',
   await expect(page.getByText('Retained server detail').last()).toBeVisible()
 })
 
+test('customer directory formats UTC timestamps, pluralizes totals, and keeps pagination and refresh accessible', async ({
+  page,
+}) => {
+  await connect(page)
+  const customer = {
+    id,
+    email: 'customer@example.test',
+    displayName: 'Example Customer',
+    status: 'ACTIVE',
+    createdAt: '2026-11-10T13:41:22.308Z',
+    orderCount: 4,
+    lastOrderAt: '2026-11-16T12:34:35.732Z',
+  }
+  const detail = {
+    ...customer,
+    savedAddressCount: 1,
+    recentOrders: [
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        status: 'DELIVERED',
+        createdAt: '2026-11-15T08:30:00.000Z',
+      },
+    ],
+  }
+  let total = 1
+  let holdRefresh = false
+  let releaseRefresh = () => {}
+  await page.route('**/v1/admin/customers*', async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname === '/v1/admin/customers') {
+      if (holdRefresh) {
+        holdRefresh = false
+        await new Promise((resolve) => {
+          releaseRefresh = resolve
+        })
+      }
+      return route.fulfill({
+        json: {
+          items: [customer],
+          total,
+          page: Number(url.searchParams.get('page') || 1),
+          limit: 20,
+        },
+      })
+    }
+    if (url.pathname === `/v1/admin/customers/${id}`)
+      return route.fulfill({ json: detail })
+    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+  })
+
+  await page.goto('/customers')
+  await expect(page.getByText('Nov 10, 2026, 1:41 PM UTC')).toBeVisible()
+  await expect(page.getByText('Nov 16, 2026, 12:34 PM UTC')).toBeVisible()
+  await expect(page.getByText('1 customer · Page 1 of 1')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Previous' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Next' })).toHaveCount(0)
+
+  const refresh = page.getByRole('button', { name: 'Refresh customers' })
+  await expect(refresh).toBeVisible()
+  await expect(refresh.locator('svg')).toBeVisible()
+  holdRefresh = true
+  await refresh.click()
+  await expect(refresh).toHaveAttribute('aria-busy', 'true')
+  await expect(refresh.locator('svg')).toHaveClass(/animate-spin/)
+  releaseRefresh()
+  await expect(page.getByText('1 customer · Page 1 of 1')).toBeVisible()
+
+  total = 21
+  await page.getByLabel('Filter customer status').selectOption('ACTIVE')
+  await expect(page.getByText('21 customers · Page 1 of 2')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByText('21 customers · Page 2 of 2')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Previous' })).toBeEnabled()
+
+  await page.getByRole('button', { name: 'View customer' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Customer account overview' }),
+  ).toBeVisible()
+  await expect(page.getByText('Nov 15, 2026, 8:30 AM UTC')).toBeVisible()
+})
+
 for (const path of [
   '/customers',
   '/shipping',

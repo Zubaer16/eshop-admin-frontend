@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { LoaderCircle, RefreshCw } from 'lucide-react'
 import {
   useResource,
   ErrorMessage,
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { controlClass } from '@/components/ui/field'
 import { PageHeading } from '@/components/layout/page-heading'
+import { displayDateTime } from '@/lib/presentation'
 type Customer = {
   id: string
   email: string
@@ -41,6 +43,7 @@ export function Customers() {
     search: search || undefined,
     status: status || undefined,
   })
+  const directory = resource.data
   return (
     <>
       <PageHeading
@@ -83,15 +86,26 @@ export function Customers() {
           </select>
           <Button
             type="button"
-            variant="ghost"
-            busy={resource.isRefreshing}
-            pendingLabel="Refreshing…"
+            variant="secondary"
+            size="icon"
+            aria-label="Refresh customers"
+            title="Refresh customers"
+            aria-busy={resource.isRefreshing}
+            disabled={resource.isRefreshing}
             onClick={resource.reload}
           >
-            Refresh customers
+            {resource.isRefreshing ? (
+              <LoaderCircle
+                size={16}
+                aria-hidden="true"
+                className="animate-spin motion-reduce:animate-none"
+              />
+            ) : (
+              <RefreshCw size={16} aria-hidden="true" />
+            )}
           </Button>
         </form>
-        {!resource.data ? (
+        {!directory ? (
           <ResourceState error={resource.error} retry={resource.reload} />
         ) : (
           <>
@@ -114,7 +128,7 @@ export function Customers() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {resource.data.items.map((customer) => (
+                  {directory.items.map((customer) => (
                     <tr key={customer.id}>
                       <td className="p-4">
                         <p className="font-bold">
@@ -126,9 +140,19 @@ export function Customers() {
                       </td>
                       <td className="p-4">{customer.status}</td>
                       <td className="p-4">{customer.orderCount}</td>
-                      <td className="p-4">{customer.createdAt}</td>
-                      <td className="p-4">
-                        {customer.lastOrderAt || 'No orders'}
+                      <td className="p-4 whitespace-nowrap">
+                        <time dateTime={customer.createdAt}>
+                          {displayDateTime(customer.createdAt)}
+                        </time>
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        {customer.lastOrderAt ? (
+                          <time dateTime={customer.lastOrderAt}>
+                            {displayDateTime(customer.lastOrderAt)}
+                          </time>
+                        ) : (
+                          'No orders'
+                        )}
                       </td>
                       <td className="p-4">
                         <Button
@@ -142,7 +166,7 @@ export function Customers() {
                   ))}
                 </tbody>
               </table>
-              {!resource.data.items.length && (
+              {!directory.items.length && (
                 <p className="p-8 text-sm text-muted">
                   No customers match these filters.
                 </p>
@@ -150,28 +174,32 @@ export function Customers() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line p-4 text-sm">
               <span>
-                {resource.data.total} customers · Page {resource.data.page} of{' '}
-                {Math.max(
-                  1,
-                  Math.ceil(resource.data.total / resource.data.limit),
-                )}
+                {directory.total.toLocaleString('en-US')}{' '}
+                {directory.total === 1 ? 'customer' : 'customers'} · Page{' '}
+                {directory.page} of{' '}
+                {Math.max(1, Math.ceil(directory.total / directory.limit))}
               </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={page <= 1}
-                  onClick={() => setPage((value) => value - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={page * resource.data.limit >= resource.data.total}
-                  onClick={() => setPage((value) => value + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+              {Math.ceil(directory.total / directory.limit) > 1 && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    disabled={directory.page <= 1}
+                    onClick={() => setPage(directory.page - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={
+                      directory.page >=
+                      Math.ceil(directory.total / directory.limit)
+                    }
+                    onClick={() => setPage(directory.page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -200,7 +228,10 @@ function CustomerDetail({ id }: { id: string }) {
         <h2 className="font-bold">{customer.displayName || 'Customer'}</h2>
         <p className="mt-2 break-all text-sm">{customer.email}</p>
         <p className="mt-2 text-sm">
-          {customer.status} · Joined {customer.createdAt}
+          {customer.status} · Joined{' '}
+          <time dateTime={customer.createdAt}>
+            {displayDateTime(customer.createdAt)}
+          </time>
         </p>
         <p className="mt-2 text-sm">
           {customer.orderCount} orders · {customer.savedAddressCount} saved
@@ -219,7 +250,10 @@ function CustomerDetail({ id }: { id: string }) {
         >
           <p className="break-all font-semibold">{order.id}</p>
           <p className="mt-2">
-            {order.status} · {order.createdAt}
+            {order.status} ·{' '}
+            <time dateTime={order.createdAt}>
+              {displayDateTime(order.createdAt)}
+            </time>
           </p>
         </div>
       ))}
