@@ -124,6 +124,120 @@ async function connect(
   })
 }
 
+// Keep the session exchange pending so the initial loader is observable
+// without relying on a fixed network delay or a transient intermediate status.
+async function holdSessionRestore(page) {
+  await connect(page)
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/auth/session', async (route) => {
+    await pending
+    await route.fulfill({
+      json: {
+        accessToken: 'a'.repeat(40),
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        user,
+      },
+    })
+  })
+  return release
+}
+
+for (const width of [390, 1440]) {
+  test(`initial authentication uses a branded loader and keeps the workspace private at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 850 })
+    const release = await holdSessionRestore(page)
+    try {
+      await page.goto('/dashboard')
+      const status = page.getByRole('status', {
+        name: 'Preparing your workspace',
+      })
+      await expect(status).toBeVisible()
+      await expect(status).toHaveAttribute('aria-busy', 'true')
+      await expect(status.getByText('ADMIN WORKSPACE')).toBeVisible()
+      await expect(status.getByText('Preparing your workspace…')).toBeVisible()
+      await expect(page.getByText('Checking your session…')).toHaveCount(0)
+      await expect(page.getByText('Please sign in to continue.')).toHaveCount(0)
+      await expect(
+        page.getByRole('navigation', { name: 'Admin navigation' }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole('heading', { name: 'Good to see you again.' }),
+      ).toHaveCount(0)
+    } finally {
+      release()
+    }
+    await expect(
+      page.getByRole('heading', { name: 'Good to see you again.' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('status', { name: 'Preparing your workspace' }),
+    ).toHaveCount(0)
+  })
+}
+
+test('reduced motion disables the session loader spinner animation', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const release = await holdSessionRestore(page)
+  try {
+    await page.goto('/dashboard')
+    const status = page.getByRole('status', {
+      name: 'Preparing your workspace',
+    })
+    await expect(status).toBeVisible()
+    const spinner = status.locator('[aria-hidden="true"].rounded-full')
+    await expect(spinner).toBeVisible()
+    await expect(spinner).toHaveCSS('animation-name', 'none')
+  } finally {
+    release()
+  }
+  await expect(
+    page.getByRole('heading', { name: 'Good to see you again.' }),
+  ).toBeVisible()
+})
+
+test('anonymous session redirects to sign-in without mounting the private workspace', async ({
+  page,
+}) => {
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  await page.route('**/api/auth/session', async (route) => {
+    await pending
+    await route.fulfill({
+      status: 401,
+      json: { message: 'No active session' },
+    })
+  })
+  try {
+    await page.goto('/orders')
+    await expect(
+      page.getByRole('status', { name: 'Preparing your workspace' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('navigation', { name: 'Admin navigation' }),
+    ).toHaveCount(0)
+    await expect(page.getByText('Please sign in to continue.')).toHaveCount(0)
+  } finally {
+    release()
+  }
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Forders/)
+  await expect(
+    page.getByRole('heading', { name: 'Admin sign in' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('navigation', { name: 'Admin navigation' }),
+  ).toHaveCount(0)
+})
+
 test('category management shows a searchable expandable hierarchy with visibility filters', async ({
   page,
 }) => {

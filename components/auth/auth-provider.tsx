@@ -11,6 +11,7 @@ import { useNavigationRouter } from '@/components/layout/navigation-provider'
 import { api, authChannelName, sessionSource } from '@/lib/api/client'
 import type { Session } from '@/lib/api/runtime'
 import { bindAdminIdentityRevalidation } from '@/lib/auth-identity-lifecycle'
+import { AdminSessionLoader } from './admin-session-loader'
 const Context = createContext<{ session: Session; ready: boolean } | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const session = useSyncExternalStore(
@@ -72,13 +73,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
       router.replace('/sign-in?next=' + encodeURIComponent(pathname))
   }, [ready, session.status, pathname, router])
   if (!ready || session.status !== 'authenticated')
-    return (
-      <p role="status" className="p-8 text-sm text-slate-600">
-        {session.status === 'checking'
-          ? 'Checking your session…'
-          : 'Please sign in to continue.'}
-      </p>
-    )
+    return <AdminSessionLoader />
   return (
     <div
       key={
