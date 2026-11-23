@@ -1014,7 +1014,7 @@ test('report table displays exact currency and retains complete record details',
   await expect(page.getByText('Retained server detail').last()).toBeVisible()
 })
 
-test('customer directory formats UTC timestamps, pluralizes totals, and keeps pagination and refresh accessible', async ({
+test('customer directory uses server search, filters, pagination metadata and busy refresh', async ({
   page,
 }) => {
   await connect(page)
@@ -1027,73 +1027,250 @@ test('customer directory formats UTC timestamps, pluralizes totals, and keeps pa
     orderCount: 4,
     lastOrderAt: '2026-11-16T12:34:35.732Z',
   }
-  const detail = {
-    ...customer,
-    savedAddressCount: 1,
-    recentOrders: [
-      {
-        id: '00000000-0000-4000-8000-000000000002',
-        status: 'DELIVERED',
-        createdAt: '2026-11-15T08:30:00.000Z',
-      },
-    ],
-  }
-  let total = 1
+  const requests = []
   let holdRefresh = false
   let releaseRefresh = () => {}
   await page.route('**/v1/admin/customers*', async (route) => {
     const url = new URL(route.request().url())
-    if (url.pathname === '/v1/admin/customers') {
-      if (holdRefresh) {
-        holdRefresh = false
-        await new Promise((resolve) => {
-          releaseRefresh = resolve
-        })
-      }
-      return route.fulfill({
-        json: {
-          items: [customer],
-          total,
-          page: Number(url.searchParams.get('page') || 1),
-          limit: 20,
-        },
+    if (url.pathname !== '/v1/admin/customers')
+      return route.fulfill({ status: 404, json: { message: 'Not found' } })
+    const pageNumber = Number(url.searchParams.get('page') || 1)
+    const limit = Number(url.searchParams.get('limit') || 20)
+    const status = url.searchParams.get('status')
+    const search = url.searchParams.get('search')
+    requests.push({ page: pageNumber, limit, status, search })
+    if (holdRefresh) {
+      holdRefresh = false
+      await new Promise((resolve) => {
+        releaseRefresh = resolve
       })
     }
-    if (url.pathname === `/v1/admin/customers/${id}`)
-      return route.fulfill({ json: detail })
-    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+    const total =
+      search === 'Nobody' ? 0 : status === 'ACTIVE' && !search ? 21 : 1
+    const items = Array.from({ length: total }, (_, index) => ({
+      ...customer,
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      email: index ? `customer${index}@example.test` : customer.email,
+    })).slice((pageNumber - 1) * limit, pageNumber * limit)
+    return route.fulfill({ json: { items, total, page: pageNumber, limit } })
   })
 
   await page.goto('/customers')
-  await expect(page.getByText('Nov 10, 2026, 1:41 PM UTC')).toBeVisible()
-  await expect(page.getByText('Nov 16, 2026, 12:34 PM UTC')).toBeVisible()
-  await expect(page.getByText('1 customer · Page 1 of 1')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Previous' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Next' })).toHaveCount(0)
+  await expect(
+    page.getByRole('region', { name: 'Customers table' }),
+  ).toBeVisible()
+  await expect(page.getByRole('cell', { name: /Nov 10, 2026/ })).toBeVisible()
+  await expect(page.getByText('Showing 1–1 of 1 customer')).toBeVisible()
+  await expect(
+    page.getByRole('navigation', { name: 'Customers pagination' }),
+  ).toHaveCount(0)
+  await expect(page.getByText('Matching customers')).toBeVisible()
+  await expect(page.getByText('Results on this page')).toBeVisible()
 
   const refresh = page.getByRole('button', { name: 'Refresh customers' })
-  await expect(refresh).toBeVisible()
-  await expect(refresh.locator('svg')).toBeVisible()
   holdRefresh = true
   await refresh.click()
   await expect(refresh).toHaveAttribute('aria-busy', 'true')
-  await expect(refresh.locator('svg')).toHaveClass(/animate-spin/)
   releaseRefresh()
-  await expect(page.getByText('1 customer · Page 1 of 1')).toBeVisible()
+  await expect(page.getByText('Showing 1–1 of 1 customer')).toBeVisible()
 
-  total = 21
   await page.getByLabel('Filter customer status').selectOption('ACTIVE')
-  await expect(page.getByText('21 customers · Page 1 of 2')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('21 customers · Page 2 of 2')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Previous' })).toBeEnabled()
+  await expect(page.getByText('Showing 1–20 of 21 customers')).toBeVisible()
+  const nav = page.getByRole('navigation', { name: 'Customers pagination' })
+  await expect(nav.getByRole('button', { name: 'Page 1' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await nav.getByRole('button', { name: 'Next page' }).click()
+  await expect(page.getByText('Showing 21–21 of 21 customers')).toBeVisible()
+  await expect(nav.getByRole('button', { name: 'Page 2' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect.poll(() => requests.at(-1).page).toBe(2)
 
-  await page.getByRole('button', { name: 'View customer' }).click()
+  await page.getByLabel('Customers per page').selectOption('10')
+  await expect(page.getByText('Showing 1–10 of 21 customers')).toBeVisible()
+  await expect
+    .poll(() => requests.at(-1))
+    .toMatchObject({ page: 1, limit: 10, status: 'ACTIVE' })
+  await page
+    .getByRole('textbox', { name: 'Search customers' })
+    .fill('  Example  ')
+  await page.getByRole('button', { name: 'Search customers' }).click()
+  await expect(page.getByText('Showing 1–1 of 1 customer')).toBeVisible()
+  await expect
+    .poll(() => requests.at(-1))
+    .toMatchObject({ page: 1, limit: 10, status: 'ACTIVE', search: 'Example' })
+  await expect(nav).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Search customers' }).fill('Nobody')
+  await page.getByRole('button', { name: 'Search customers' }).click()
+  await expect(page.getByText('Showing 0–0 of 0 customers')).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Customer account overview' }),
+    page
+      .getByRole('region', { name: 'Customers table' })
+      .getByText('No customers found'),
   ).toBeVisible()
-  await expect(page.getByText('Nov 15, 2026, 8:30 AM UTC')).toBeVisible()
+  await expect(nav).toHaveCount(0)
+})
+
+for (const width of [390, 1440]) {
+  test(`customer directory and full-page details stay responsive at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 850 })
+    await connect(page)
+    const customer = {
+      id,
+      email: 'customer@example.test',
+      displayName: 'Example Customer',
+      status: 'ACTIVE',
+      createdAt: '2026-11-10T13:41:22.308Z',
+      orderCount: 4,
+      lastOrderAt: '2026-11-16T12:34:35.732Z',
+    }
+    let detailReads = 0
+    await page.route('**/v1/admin/customers*', (route) => {
+      const url = new URL(route.request().url())
+      if (url.pathname === '/v1/admin/customers')
+        return route.fulfill({
+          json: { items: [customer], total: 1, page: 1, limit: 20 },
+        })
+      if (url.pathname === `/v1/admin/customers/${id}`) {
+        detailReads++
+        return route.fulfill({
+          json: {
+            ...customer,
+            savedAddressCount: 2,
+            recentOrders: [
+              {
+                id: '00000000-0000-4000-8000-000000000002',
+                status: 'PAID',
+                createdAt: '2026-11-15T08:30:00.000Z',
+              },
+            ],
+          },
+        })
+      }
+      return route.fulfill({ status: 404, json: { message: 'Not found' } })
+    })
+
+    await page.goto('/customers')
+    if (width < 768) {
+      await expect(page.getByTestId('customer-card')).toBeVisible()
+      await expect(
+        page.getByRole('region', { name: 'Customers table' }),
+      ).toBeHidden()
+      await page
+        .getByTestId('customer-card')
+        .getByRole('button', { name: 'View details' })
+        .click()
+    } else {
+      await expect(
+        page.getByRole('region', { name: 'Customers table' }),
+      ).toBeVisible()
+      await page
+        .getByRole('region', { name: 'Customers table' })
+        .getByRole('button', { name: 'View details' })
+        .click()
+    }
+    await expect(page).toHaveURL(new RegExp(`/customers\\?customer=${id}$`))
+    await expect(
+      page.getByRole('heading', { name: 'Customer details' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Example Customer' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Recent orders' }),
+    ).toBeVisible()
+    await expect(page.getByText('Nov 15, 2026, 8:30 AM UTC')).toBeVisible()
+    await expect(
+      page.getByText('Saved addresses', { exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Copy full customer UUID' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: /View order details/ }),
+    ).toHaveAttribute(
+      'href',
+      '/orders?order=00000000-0000-4000-8000-000000000002',
+    )
+    await expect.poll(() => detailReads).toBe(1)
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width + 1)
+    if (width === 1440) {
+      await page.getByRole('link', { name: /View order details/ }).click()
+      await expect(page).toHaveURL(
+        /\/orders\?order=00000000-0000-4000-8000-000000000002$/,
+      )
+      await expect(
+        page.getByRole('heading', { name: 'Order details' }),
+      ).toBeVisible()
+      await page.goBack()
+      await expect(
+        page.getByRole('heading', { name: 'Customer details' }),
+      ).toBeVisible()
+    }
+    await page.getByRole('button', { name: 'Back to customers' }).click()
+    await expect(page).toHaveURL(/\/customers$/)
+    await expect(
+      page.getByRole('heading', { name: 'Customers', exact: true }),
+    ).toBeVisible()
+  })
+}
+
+test('customer deep links reject invalid IDs and do not load private details without order grants', async ({
+  page,
+}) => {
+  await connect(page, {
+    ...user,
+    role: 'STAFF',
+    staffRole: 'SUPPORT',
+    permissions: ['customers.view'],
+  })
+  const customer = {
+    id,
+    displayName: 'Customer Only',
+    email: 'only@example.test',
+    status: 'ACTIVE',
+    createdAt: '2026-11-10T13:41:22.308Z',
+    lastOrderAt: null,
+    orderCount: 1,
+    savedAddressCount: 0,
+    recentOrders: [
+      {
+        id: '00000000-0000-4000-8000-000000000002',
+        status: 'PAID',
+        createdAt: '2026-11-15T08:30:00.000Z',
+      },
+    ],
+  }
+  const reads = []
+  await page.route('**/v1/admin/customers*', (route) => {
+    const path = new URL(route.request().url()).pathname
+    reads.push(path)
+    if (path === `/v1/admin/customers/${id}`)
+      return route.fulfill({ json: customer })
+    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+  })
+  await page.goto('/customers?customer=invalid-id')
+  await expect(
+    page.getByRole('heading', { name: 'Invalid customer reference' }),
+  ).toBeVisible()
+  expect(reads).toEqual([])
+  await page.goto(`/customers?customer=${id}`)
+  await expect(
+    page.getByRole('heading', { name: 'Customer details' }),
+  ).toBeVisible()
+  await expect(page.getByText('Customer Only')).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: /View order details/ }),
+  ).toHaveCount(0)
+  expect(reads).toEqual([`/v1/admin/customers/${id}`])
 })
 
 for (const path of [
