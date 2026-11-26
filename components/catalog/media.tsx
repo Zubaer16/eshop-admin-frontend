@@ -11,7 +11,9 @@ import {
 import { transferImage, type UploadInstruction } from '@/lib/api/media-upload'
 import { Button } from '@/components/ui/button'
 import { controlClass } from '@/components/ui/field'
-import { Panel } from '@/components/ui/panel'
+import { Panel, SectionHeading } from '@/components/ui/panel'
+import { Badge, statusKind } from '@/components/ui/badge'
+import { AdminEmptyState } from '@/components/ui/admin-workspace'
 import { PageHeading } from '@/components/layout/page-heading'
 import {
   ErrorMessage,
@@ -135,8 +137,12 @@ function ImageUpload({ complete }: { complete: () => void }) {
     }
   }
   return (
-    <div className="rounded-xl border border-line p-4">
-      <h3 className="font-bold">Upload verified image</h3>
+    <Panel className="p-4 sm:p-5">
+      <SectionHeading
+        title="Upload verified image"
+        subtitle="Transfer through the configured storage provider, then verify the asset on the server."
+        action={<Badge kind="info">Verified upload flow</Badge>}
+      />
       <label className="mt-3 block text-sm">
         Image module
         <select
@@ -156,13 +162,13 @@ function ImageUpload({ complete }: { complete: () => void }) {
           ))}
         </select>
       </label>
-      <p className="mt-2 text-xs text-muted">
-        Upload through the configured storage provider, then verify on the
-        server. No public preview is guaranteed before an asset is attached.
+      <p className="mt-3 text-xs leading-relaxed text-muted">
+        No public preview is guaranteed before an asset is attached. A pending
+        upload remains available for the same upload or verification retry.
       </p>
       <input
         aria-label="Upload image"
-        className="mt-4 block w-full text-sm"
+        className="mt-4 block min-h-11 w-full rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-primary"
         type="file"
         accept="image/jpeg,image/png,image/webp,image/avif"
         disabled={busy || Boolean(pending)}
@@ -179,7 +185,10 @@ function ImageUpload({ complete }: { complete: () => void }) {
         </p>
       )}
       {busy && (
-        <p role="status" className="mt-3 text-sm">
+        <p
+          role="status"
+          className="mt-3 rounded-xl bg-blue-50 p-3 text-xs font-semibold text-blue-800"
+        >
           Uploading / verifying…
         </p>
       )}
@@ -219,7 +228,7 @@ function ImageUpload({ complete }: { complete: () => void }) {
           </div>
         </div>
       )}
-    </div>
+    </Panel>
   )
 }
 export function MediaLibrary({
@@ -271,7 +280,7 @@ export function MediaLibrary({
     }
   }
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <ImageUpload
         complete={() => {
           setId('')
@@ -281,153 +290,181 @@ export function MediaLibrary({
           resource.reload()
         }}
       />
-      <form
-        className="flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          setPage(1)
-          setId(search.trim())
-        }}
-      >
-        <input
-          className={controlClass + ' max-w-xs'}
-          aria-label="Find media by UUID"
-          placeholder="Exact asset UUID"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <Button variant="secondary" type="submit">
-          Find media
-        </Button>
-        <select
-          aria-label="Media status"
-          className={controlClass + ' w-auto'}
-          value={status}
-          onChange={(e) => {
+      <Panel className="overflow-hidden">
+        <div className="border-b border-line px-4 py-4 sm:px-5">
+          <SectionHeading
+            title="Asset directory"
+            subtitle={
+              resource.data
+                ? `${resource.data.total.toLocaleString('en-US')} server records · 12 per page`
+                : 'Verified and pending media assets'
+            }
+            action={
+              <Button
+                size="sm"
+                variant="ghost"
+                busy={resource.isRefreshing}
+                pendingLabel="Refreshing…"
+                onClick={resource.reload}
+              >
+                Refresh library
+              </Button>
+            }
+          />
+        </div>
+        <form
+          className="grid gap-3 border-b border-line bg-slate-50/70 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end sm:p-5"
+          onSubmit={(e) => {
+            e.preventDefault()
             setPage(1)
-            setStatus(e.target.value)
+            setId(search.trim())
           }}
         >
-          {[
-            'ACTIVE',
-            'PENDING_UPLOAD',
-            'PENDING_DELETE',
-            'DELETE_FAILED',
-            'DELETED',
-          ].map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-        <Button
-          type="button"
-          variant="ghost"
-          busy={resource.isRefreshing}
-          pendingLabel="Refreshing…"
-          onClick={resource.reload}
-        >
-          Refresh library
-        </Button>
-      </form>
-      <ErrorMessage text={error} />
-      {notice && (
-        <p role="status" className="text-sm text-primary">
-          {notice}
-        </p>
-      )}
-      {!resource.data ? (
-        <ResourceState
-          error={resource.error}
-          retry={resource.reload}
-          variant="grid"
-        />
-      ) : (
-        <>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {resource.data.items.map((asset) => (
-              <div
-                key={asset.id}
-                data-testid={'media-asset-' + asset.id}
-                className="admin-offscreen-card admin-offscreen-media-card rounded-xl border border-line p-3"
-              >
-                <MediaImage
-                  key={asset.url}
-                  url={asset.url}
-                  alt="Media library image"
-                  width={asset.width}
-                  height={asset.height}
-                  className="h-28 w-full rounded-lg"
-                />
-                <p className="mt-2 break-all text-xs font-semibold">
-                  {asset.id}
-                </p>
-                <p className="mt-1 text-xs text-muted">
-                  {asset.status} · {asset.mimeType} · {asset.width}×
-                  {asset.height} · {asset.bytes} bytes
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {choose && (
+          <input
+            className={controlClass + ' min-w-0'}
+            aria-label="Find media by UUID"
+            placeholder="Exact asset UUID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Button variant="secondary" type="submit">
+            Find media
+          </Button>
+          <select
+            aria-label="Media status"
+            className={controlClass + ' w-auto'}
+            value={status}
+            onChange={(e) => {
+              setPage(1)
+              setStatus(e.target.value)
+            }}
+          >
+            {[
+              'ACTIVE',
+              'PENDING_UPLOAD',
+              'PENDING_DELETE',
+              'DELETE_FAILED',
+              'DELETED',
+            ].map((x) => (
+              <option key={x}>{x}</option>
+            ))}
+          </select>
+        </form>
+        <ErrorMessage text={error} />
+        {notice && (
+          <p
+            role="status"
+            className="mx-4 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800 sm:mx-5"
+          >
+            {notice}
+          </p>
+        )}
+        {!resource.data ? (
+          <div className="p-4 sm:p-5">
+            <ResourceState
+              error={resource.error}
+              retry={resource.reload}
+              variant="grid"
+            />
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+              {resource.data.items.map((asset) => (
+                <div
+                  key={asset.id}
+                  data-testid={'media-asset-' + asset.id}
+                  className="admin-offscreen-card admin-offscreen-media-card min-w-0 rounded-2xl border border-line bg-white p-3 shadow-[0_3px_14px_rgba(15,23,42,.025)] transition-shadow hover:shadow-sm"
+                >
+                  <MediaImage
+                    key={asset.url}
+                    url={asset.url}
+                    alt="Media library image"
+                    width={asset.width}
+                    height={asset.height}
+                    className="h-36 w-full rounded-xl bg-slate-50"
+                  />
+                  <p className="mt-2 break-all text-xs font-semibold">
+                    {asset.id}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <Badge kind={statusKind(asset.status)}>
+                      {asset.status}
+                    </Badge>
+                    <Badge>{asset.mimeType}</Badge>
+                  </div>
+                  <p className="mt-2 text-xs tabular-nums text-muted">
+                    {asset.width}×{asset.height} ·{' '}
+                    {asset.bytes.toLocaleString('en-US')} bytes
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
+                    {choose && (
+                      <Button
+                        disabled={
+                          asset.status !== 'ACTIVE' ||
+                          selected.includes(asset.id) ||
+                          selected.length >= 6
+                        }
+                        size="sm"
+                        onClick={() => choose(asset)}
+                      >
+                        {selected.includes(asset.id) ? 'Selected' : 'Use image'}
+                      </Button>
+                    )}
                     <Button
                       disabled={
-                        asset.status !== 'ACTIVE' ||
-                        selected.includes(asset.id) ||
-                        selected.length >= 6
+                        busy ||
+                        asset.status === 'DELETED' ||
+                        asset.status === 'PENDING_DELETE'
                       }
                       size="sm"
-                      onClick={() => choose(asset)}
+                      variant="danger"
+                      onClick={() => void remove(asset)}
                     >
-                      {selected.includes(asset.id) ? 'Selected' : 'Use image'}
+                      Schedule deletion
                     </Button>
-                  )}
-                  <Button
-                    disabled={
-                      busy ||
-                      asset.status === 'DELETED' ||
-                      asset.status === 'PENDING_DELETE'
-                    }
-                    size="sm"
-                    variant="danger"
-                    onClick={() => void remove(asset)}
-                  >
-                    Schedule deletion
-                  </Button>
-                  {asset.status === 'PENDING_UPLOAD' && (
-                    <Button
-                      size="sm"
-                      disabled={busy}
-                      variant="secondary"
-                      onClick={async () => {
-                        setBusy(true)
-                        setError('')
-                        try {
-                          await api.request(
-                            '/v1/admin/media/' + asset.id + '/complete',
-                            {
-                              method: 'POST',
-                            },
-                          )
-                          resource.reload()
-                        } catch (error) {
-                          setError(message(error))
-                        } finally {
-                          setBusy(false)
-                        }
-                      }}
-                    >
-                      Verify upload
-                    </Button>
-                  )}
+                    {asset.status === 'PENDING_UPLOAD' && (
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        variant="secondary"
+                        onClick={async () => {
+                          setBusy(true)
+                          setError('')
+                          try {
+                            await api.request(
+                              '/v1/admin/media/' + asset.id + '/complete',
+                              {
+                                method: 'POST',
+                              },
+                            )
+                            resource.reload()
+                          } catch (error) {
+                            setError(message(error))
+                          } finally {
+                            setBusy(false)
+                          }
+                        }}
+                      >
+                        Verify upload
+                      </Button>
+                    )}
+                  </div>
                 </div>
+              ))}
+            </div>
+            {!resource.data.items.length && (
+              <div className="px-4 pb-4 sm:px-5">
+                <AdminEmptyState
+                  title="No media match these filters"
+                  description="Try another asset status or exact media UUID."
+                />
               </div>
-            ))}
-          </div>
-          {!resource.data.items.length && (
-            <p className="py-5 text-sm text-muted">
-              No media match these filters.
-            </p>
-          )}
-          <Pagination data={resource.data} change={setPage} />
-        </>
-      )}
+            )}
+            <Pagination data={resource.data} change={setPage} />
+          </>
+        )}
+      </Panel>
     </div>
   )
 }
@@ -589,15 +626,13 @@ export function ProductMedia({
 }
 export function MediaPage() {
   return (
-    <>
+    <section className="space-y-6">
       <PageHeading
-        eyebrow="CATALOG MEDIA"
+        eyebrow="CATALOG ASSETS"
         title="Media library"
         description="Upload, verify, reuse and manage canonical image assets."
       />
-      <Panel className="p-5">
-        <MediaLibrary />
-      </Panel>
-    </>
+      <MediaLibrary />
+    </section>
   )
 }

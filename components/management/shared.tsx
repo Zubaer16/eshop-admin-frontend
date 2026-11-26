@@ -11,6 +11,8 @@ import {
 } from '@/components/catalog/shared'
 import { Button } from '@/components/ui/button'
 import { fieldClass } from '@/components/commerce/forms'
+import { Panel, SectionHeading } from '@/components/ui/panel'
+import { AdminEmptyState } from '@/components/ui/admin-workspace'
 export type Row = Record<string, unknown>
 import { label, formPayload, type Field } from '@/lib/api/management-payload'
 export { label, formPayload } from '@/lib/api/management-payload'
@@ -195,22 +197,34 @@ export function ReadPanel({
 }) {
   const r = useResource<unknown>(route, query)
   return (
-    <section className="space-y-4 rounded-2xl border bg-white p-5">
-      <h3 className="text-xl font-bold">{title}</h3>
-      <Button
-        variant="secondary"
-        busy={r.isRefreshing}
-        pendingLabel="Refreshing…"
-        onClick={r.reload}
-      >
-        Refresh {title}
-      </Button>
+    <Panel className="overflow-hidden">
+      <div className="border-b border-line px-4 py-4 sm:px-5">
+        <SectionHeading
+          title={title}
+          subtitle="Current server projection"
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              busy={r.isRefreshing}
+              pendingLabel="Refreshing…"
+              onClick={r.reload}
+            >
+              Refresh
+            </Button>
+          }
+        />
+      </div>
       {r.data !== null ? (
-        <DataView value={r.data} />
+        <div className="p-4 sm:p-5">
+          <DataView value={r.data} />
+        </div>
       ) : (
-        <ResourceState error={r.error} retry={r.reload} />
+        <div className="p-4 sm:p-5">
+          <ResourceState error={r.error} retry={r.reload} variant="table" />
+        </div>
       )}
-    </section>
+    </Panel>
   )
 }
 export function PagedPanel({
@@ -231,24 +245,44 @@ export function PagedPanel({
     pages: number
   }>(route, { ...query, page, limit: 20 })
   return (
-    <section className="space-y-4">
-      <h3 className="text-xl font-bold">{title}</h3>
-      <Button
-        variant="secondary"
-        busy={r.isRefreshing}
-        pendingLabel="Refreshing…"
-        onClick={r.reload}
-      >
-        Refresh {title}
-      </Button>
+    <Panel className="overflow-hidden">
+      <div className="border-b border-line px-4 py-4 sm:px-5">
+        <SectionHeading
+          title={title}
+          subtitle={
+            r.data
+              ? `${r.data.total.toLocaleString('en-US')} server records · page ${r.data.page} of ${Math.max(1, r.data.pages)}`
+              : 'Bounded server records'
+          }
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              busy={r.isRefreshing}
+              pendingLabel="Refreshing…"
+              onClick={r.reload}
+            >
+              Refresh
+            </Button>
+          }
+        />
+      </div>
       {r.data ? (
         <>
-          <DataView value={r.data.items} />
+          <div className="p-4 sm:p-5">
+            {r.data.items.length ? (
+              <DataView value={r.data.items} />
+            ) : (
+              <AdminEmptyState title={`No ${title.toLowerCase()} returned`} />
+            )}
+          </div>
           <Pagination data={r.data} change={setPage} />
         </>
       ) : (
-        <ResourceState error={r.error} retry={r.reload} />
+        <div className="p-4 sm:p-5">
+          <ResourceState error={r.error} retry={r.reload} variant="table" />
+        </div>
       )}
-    </section>
+    </Panel>
   )
 }

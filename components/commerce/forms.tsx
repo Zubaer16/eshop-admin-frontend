@@ -74,6 +74,8 @@ export function MutationForm({
   saved,
   children,
   label = 'Save configuration',
+  title,
+  description,
 }: {
   route: string
   method: 'POST' | 'PUT'
@@ -81,6 +83,8 @@ export function MutationForm({
   saved: () => void
   children: ReactNode
   label?: string
+  title?: string
+  description?: string
 }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -109,6 +113,18 @@ export function MutationForm({
       onSubmit={submit}
       className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5"
     >
+      {(title || description) && (
+        <div className="mb-1">
+          {title && (
+            <h3 className="text-base font-extrabold text-ink">{title}</h3>
+          )}
+          {description && (
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              {description}
+            </p>
+          )}
+        </div>
+      )}
       <fieldset
         disabled={busy || uncertain}
         className="grid gap-4 md:grid-cols-2"

@@ -1812,3 +1812,42 @@ test('media library images use lazy async low-priority decoding and stable dimen
   const card = page.getByTestId('media-asset-' + id)
   await expect(card).toHaveCSS('content-visibility', 'auto')
 })
+
+const standardizedAdminPages = [
+  ['/content', 'Store content'],
+  ['/shipping', 'Shipping & taxes'],
+  ['/payments', 'TEST payment records'],
+  ['/reports', 'Reports'],
+  ['/media', 'Media library'],
+  ['/notifications', 'Notification inbox'],
+  ['/messaging', 'Rich messaging campaigns'],
+  ['/operations', 'Operations'],
+  ['/alignment', 'Frontend compatibility'],
+  ['/staff', 'Staff & roles'],
+  ['/settings', 'Store settings'],
+  ['/activity', 'Audit activity'],
+]
+
+for (const width of [390, 1440]) {
+  test(`post-Promotions admin pages use the standard responsive workspace at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await connect(page)
+    for (const [route, heading] of standardizedAdminPages) {
+      await page.goto(route)
+      await expect(
+        page.getByRole('heading', { name: heading, exact: true }),
+      ).toBeVisible()
+      const mainOverflow = await page
+        .locator('main')
+        .evaluate((element) =>
+          Math.max(0, element.scrollWidth - element.clientWidth),
+        )
+      expect(
+        mainOverflow,
+        `${route} overflows the main workspace at ${width}px`,
+      ).toBeLessThanOrEqual(1)
+    }
+  })
+}
