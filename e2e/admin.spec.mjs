@@ -1509,6 +1509,252 @@ test('inventory detail prefetch waits for deliberate pointer dwell', async ({
   await expect.poll(() => detailRequests.length).toBeGreaterThan(0)
 })
 
+test('promotions directory presents server coupon values and adapts to mobile', async ({
+  page,
+}) => {
+  const coupon = {
+    id,
+    revision: 4,
+    code: 'WELCOME10',
+    kind: 'PERCENT',
+    value: 1000,
+    currency: 'USD',
+    minimumSubtotalMinor: 2500,
+    maximumDiscountMinor: 5000,
+    usageLimit: 100,
+    perCustomerLimit: 1,
+    startsAt: '2026-11-26T10:00:00.000Z',
+    endsAt: null,
+    categoryId: null,
+    campaignId: null,
+    enabled: true,
+  }
+  await connect(page)
+  await page.route('**/v1/admin/promotions/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/v1/admin/promotions/coupons')
+      return route.fulfill({ json: pageOf([coupon]) })
+    if (path === '/v1/admin/promotions/coupons/' + id)
+      return route.fulfill({ json: coupon })
+    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+  })
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/promotions')
+  await expect(page.getByRole('heading', { name: 'Promotions' })).toBeVisible()
+  await expect(page.getByText('WELCOME10', { exact: true })).toBeVisible()
+  await expect(
+    page
+      .getByRole('region', { name: 'Coupons table' })
+      .getByText('10%', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Coupons table' }),
+  ).toBeVisible()
+  await expect(page.getByTestId('promotion-cards')).toBeHidden()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.getByTestId('promotion-cards')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Coupons table' })).toBeHidden()
+  await expect(
+    page.getByTestId('promotion-cards').getByText('$25.00', { exact: true }),
+  ).toBeVisible()
+})
+
+test('promotion tabs support arrow-key navigation', async ({ page }) => {
+  await connect(page)
+  await page.route('**/v1/admin/promotions/**', (route) =>
+    route.fulfill({ json: pageOf([]) }),
+  )
+  await page.goto('/promotions')
+  const coupons = page.getByRole('tab', { name: 'Coupons', exact: true })
+  const campaigns = page.getByRole('tab', { name: 'Campaigns', exact: true })
+  await coupons.focus()
+  await coupons.press('ArrowRight')
+  await expect(campaigns).toHaveAttribute('aria-selected', 'true')
+  await expect(campaigns).toBeFocused()
+  await campaigns.press('ArrowLeft')
+  await expect(coupons).toHaveAttribute('aria-selected', 'true')
+  await expect(coupons).toBeFocused()
+})
+
+test('creating a coupon preserves the exact Admin API payload and timezone instant', async ({
+  page,
+}) => {
+  const coupon = {
+    id,
+    revision: 1,
+    code: 'LAUNCH10',
+    kind: 'PERCENT',
+    value: 1250,
+    currency: 'USD',
+    minimumSubtotalMinor: 2500,
+    maximumDiscountMinor: null,
+    usageLimit: null,
+    perCustomerLimit: null,
+    startsAt: '2026-12-01T09:30:00.000Z',
+    endsAt: '2026-12-31T23:00:00.000Z',
+    categoryId: null,
+    campaignId: null,
+    enabled: true,
+  }
+  let submitted
+  await connect(page)
+  await page.route('**/v1/admin/promotions/**', async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    if (
+      path === '/v1/admin/promotions/coupons' &&
+      request.method() === 'POST'
+    ) {
+      submitted = request.postDataJSON()
+      return route.fulfill({ json: coupon })
+    }
+    if (path === '/v1/admin/promotions/coupons')
+      return route.fulfill({ json: pageOf([]) })
+    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+  })
+  await page.goto('/promotions')
+  await page
+    .getByRole('button', { name: 'Create coupon', exact: true })
+    .first()
+    .click()
+  const form = page.locator('form').last()
+  await form.getByLabel('Coupon code').fill('launch10')
+  await form.getByLabel('Discount type').selectOption('PERCENT')
+  await form.getByLabel('Discount value').fill('1250')
+  await form.getByLabel('Exact currency').fill('USD')
+  await form.getByLabel('Minimum gross subtotal (minor units)').fill('2500')
+  await form.getByLabel('Starts at').fill('2026-12-01T09:30')
+  await form.getByLabel('Ends at').fill('2026-12-31T23:00')
+  await form.getByRole('checkbox', { name: 'Enable this coupon' }).check()
+  await form.getByRole('button', { name: 'Create coupon', exact: true }).click()
+  await expect.poll(() => submitted).toBeTruthy()
+  expect(submitted).toEqual({
+    expectedRevision: 0,
+    code: 'LAUNCH10',
+    kind: 'PERCENT',
+    value: 1250,
+    currency: 'USD',
+    minimumSubtotalMinor: 2500,
+    maximumDiscountMinor: null,
+    usageLimit: null,
+    perCustomerLimit: null,
+    startsAt: await page.evaluate(() =>
+      new Date('2026-12-01T09:30Z').toISOString(),
+    ),
+    endsAt: await page.evaluate(() =>
+      new Date('2026-12-31T23:00Z').toISOString(),
+    ),
+    categoryId: null,
+    campaignId: null,
+    enabled: true,
+  })
+})
+
+test('campaign editor keeps editorial fields and sends the existing campaign contract', async ({
+  page,
+}) => {
+  const campaign = {
+    id,
+    revision: 1,
+    title: 'Winter edit',
+    slug: 'winter-edit',
+    description: 'Internal planning note',
+    status: 'DRAFT',
+    startsAt: '2026-12-01T09:30:00.000Z',
+    endsAt: '2026-12-31T23:00:00.000Z',
+  }
+  let submitted
+  await connect(page)
+  await page.route('**/v1/admin/promotions/**', async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    if (
+      path === '/v1/admin/promotions/campaigns' &&
+      request.method() === 'POST'
+    ) {
+      submitted = request.postDataJSON()
+      return route.fulfill({ json: campaign })
+    }
+    if (path === '/v1/admin/promotions/campaigns')
+      return route.fulfill({ json: pageOf([]) })
+    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+  })
+  await page.goto('/promotions')
+  await page.getByRole('tab', { name: 'Campaigns', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Create campaign', exact: true })
+    .first()
+    .click()
+  const form = page.locator('form').last()
+  await form.getByLabel('Campaign title').fill('Winter edit')
+  await form.getByLabel('Canonical slug').fill('winter-edit')
+  await form.getByLabel('Internal Admin notes').fill('Internal planning note')
+  await form.getByLabel('Campaign status').selectOption('DRAFT')
+  await form.getByLabel('Starts at').fill('2026-12-01T09:30')
+  await form.getByLabel('Ends at').fill('2026-12-31T23:00')
+  await form
+    .getByRole('button', { name: 'Create campaign', exact: true })
+    .click()
+  await expect.poll(() => submitted).toBeTruthy()
+  expect(submitted).toEqual({
+    expectedRevision: 0,
+    title: 'Winter edit',
+    slug: 'winter-edit',
+    description: 'Internal planning note',
+    status: 'DRAFT',
+    startsAt: await page.evaluate(() =>
+      new Date('2026-12-01T09:30Z').toISOString(),
+    ),
+    endsAt: await page.evaluate(() =>
+      new Date('2026-12-31T23:00Z').toISOString(),
+    ),
+  })
+})
+
+test('uncertain promotion writes are not offered an automatic retry', async ({
+  page,
+}) => {
+  let writes = 0
+  await connect(page)
+  await page.route('**/v1/admin/promotions/**', async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    if (
+      path === '/v1/admin/promotions/coupons' &&
+      request.method() === 'POST'
+    ) {
+      writes += 1
+      return route.fulfill({
+        status: 500,
+        json: { message: 'Temporary failure' },
+      })
+    }
+    if (path === '/v1/admin/promotions/coupons')
+      return route.fulfill({ json: pageOf([]) })
+    return route.fulfill({ status: 404, json: { message: 'Not found' } })
+  })
+  await page.goto('/promotions')
+  await page
+    .getByRole('button', { name: 'Create coupon', exact: true })
+    .first()
+    .click()
+  const form = page.locator('form').last()
+  await form.getByLabel('Coupon code').fill('UNCERTAIN10')
+  await form.getByLabel('Discount value').fill('1000')
+  await form.getByLabel('Exact currency').fill('USD')
+  await form.getByLabel('Minimum gross subtotal (minor units)').fill('0')
+  await form.getByRole('button', { name: 'Create coupon', exact: true }).click()
+  await expect(
+    page.getByText(/server may have received this write/i),
+  ).toBeVisible()
+  await expect(
+    form.getByRole('button', { name: 'Create coupon', exact: true }),
+  ).toHaveCount(0)
+  expect(writes).toBe(1)
+})
+
 test('promotion campaign prefetch waits for deliberate pointer dwell', async ({
   page,
 }) => {
@@ -1523,7 +1769,7 @@ test('promotion campaign prefetch waits for deliberate pointer dwell', async ({
     route.fulfill({ json: pageOf([]) }),
   )
   await page.goto('/promotions')
-  const button = page.getByRole('button', { name: 'Campaigns', exact: true })
+  const button = page.getByRole('tab', { name: 'Campaigns', exact: true })
   await expect(button).toBeVisible()
 
   await button.hover()
